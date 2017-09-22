@@ -303,6 +303,7 @@ class AhaDisposalClient:
 
     def by_address(self, street, house_number):
         """Returns pickups by the respective address."""
+        street = normalize_street(street)
         pickup_location = self.get_pickup_location(street)
 
         try:
@@ -323,7 +324,7 @@ class AhaDisposalClient:
 def main(options):
     """Runs the web scraper."""
 
-    street = normalize_street(options['<street>'])
+    street = options['<street>']
     house_number = options['<house_number>']
 
     try:
