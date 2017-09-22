@@ -24,19 +24,6 @@ __all__ = ['AhaDisposalClient']
 
 BASE_URL = 'https://www.aha-region.de/'
 DEFAULT_URL = urljoin(BASE_URL, 'abholtermine/abfuhrkalender')
-RESULT_START = '<!-- ###ERGEBNIS### start-->'
-RESULT_END = '<!-- ###ERGEBNIS### end-->'
-ADDRESS_LIST_START = (
-    '<SELECT class=\'tab_body\' id="strasse" name="strasse" size="1">')
-ADDRESS_LIST_END = '</select>'
-ADDRESS_VALUE_START = "value='"
-ADDRESS_VALUE_END = "'>"
-LADEORT_LIST_START = (
-    '<select class="tab_body" id="ladeort" name="ladeort" size="1">')
-LADEORT_LIST_END = '</select>'
-DATES_LIST_START = (
-    '<!-- ###SUCH_ERGEBNIS_FRAKTIONEN_NAECHSTE_TERMINE### start-->')
-DATES_LIST_END = '<!-- ###SUCH_ERGEBNIS_FRAKTIONEN_NAECHSTE_TERMINE### end-->'
 
 
 STREET_MAP = {
@@ -44,6 +31,29 @@ STREET_MAP = {
     'straße': 'str',
     'Strasse': 'Str.',
     'Straße': 'Str.'}
+
+
+class LocationNotFound(Exception):
+    """Indicates that the respective location could not be found."""
+
+    def __init__(self, street):
+        """Sets the street."""
+        super().__init__(street)
+        self.street = street
+
+
+class LoadingLocations(Exception):
+    """Indicates that the next possible pickup
+    is at the given loading locations.
+    """
+
+    def __init__(self, locations):
+        super().__init__(locations)
+        self.locations = locations
+
+    def __iter__(self):
+        for location in self.locations:
+            yield location
 
 
 def normalize_street(street):
@@ -81,6 +91,21 @@ def get_loading_locations(html):
 
     for option in select.find_all('option'):
         yield LoadingLocation.from_html(option)
+
+
+class LocationWrapper:
+    """A location wrapper."""
+
+    def __init__(self, location, house_number):
+        """Sets location implementation and house number."""
+        self.location = location
+        self.house_number = house_number
+
+    def to_dict(self):
+        """Returns a JSON-ish dictionary."""
+        dictionary = self.location.to_dict()
+        dictionary['house_number'] = self.house_number
+        return dictionary
 
 
 class PickupInformation:
@@ -163,20 +188,6 @@ class LoadingLocation:
         return cls(key, street, house_number)
 
 
-class LoadingLocations(Exception):
-    """Indicates that the next possible pickup
-    is at the given loading locations.
-    """
-
-    def __init__(self, locations):
-        super().__init__(locations)
-        self.locations = locations
-
-    def __iter__(self):
-        for location in self.locations:
-            yield location
-
-
 class PickupLocation:
     """A pickup location."""
 
@@ -205,18 +216,23 @@ class PickupLocation:
 class Pickup:
     """A pickup location with dates."""
 
-    def __init__(self, location, house_number, pickups):
+    def __init__(self, pickups, pickup_location=None, loading_location=None):
         """Sets street, house number and pickups."""
-        self.location = location
-        self.house_number = house_number
         self.pickups = pickups
+        self.pickup_location = pickup_location
+        self.loading_location = loading_location
 
     def to_dict(self):
         """Returns a JSON-ish dictionary."""
-        return {
-            'location': self.location.to_dict(),
-            'house_number': self.house_number,
-            'pickups': [pickup.to_dict() for pickup in self.pickups]}
+        dictionary = {'pickups': [pickup.to_dict() for pickup in self.pickups]}
+
+        if self.pickup_location:
+            dictionary['pickup_location'] = self.pickup_location.to_dict()
+
+        if self.loading_location:
+            dictionary['loading_location'] = self.loading_location.to_dict()
+
+        return dictionary
 
 
 class AhaDisposalClient:
@@ -227,7 +243,7 @@ class AhaDisposalClient:
         self.district = district
 
     @property
-    def locations(self):
+    def pickup_locations(self):
         """Yields the respective pickup addresses."""
         params = {'von': 'A', 'bis': '[', 'gemeinde': self.district}
         reply = get(self.url, params=params)
@@ -239,16 +255,12 @@ class AhaDisposalClient:
             for option in options:
                 yield PickupLocation.from_string(str(option['value']))
 
-    def by_house_number(self, pickup_location, house_number):
+    def by_pickup_location(self, pickup_location, house_number):
         """Returns the respective pickups."""
         params = {
             'strasse': str(pickup_location),
             'hausnr': house_number}
-        print(params)
         reply = get(self.url, params=params)
-
-        with open('/tmp/aha.html', 'w') as file:
-            file.write(reply.text)
 
         if reply.status_code == 200:
             html = BeautifulSoup(reply.text, 'html.parser')
@@ -260,13 +272,12 @@ class AhaDisposalClient:
                 for pickup in parse_pickups(table):
                     yield pickup
 
-    def by_loading_location(self, pickup_location, loading_location):
+    def by_loading_location(self, loading_location, street_code):
         """Returns the respective pickups."""
         params = {
-            'strasse': str(pickup_location),
+            'strasse': street_code,
             'hausnr': loading_location.house_number,
             'ladeort': loading_location.key}
-        print(params)
         reply = get(self.url, params=params)
 
         if reply.status_code == 200:
@@ -276,18 +287,36 @@ class AhaDisposalClient:
             for pickup in parse_pickups(table):
                 yield pickup
 
-    def pickups(self, pickup_location, house_number):
-        """Yields pickups near the provided address."""
+    def get_pickup_locations(self, street):
+        """Gets a location by the respective street name."""
+        for pickup_location in self.pickup_locations:
+            if street in pickup_location.street:
+                yield pickup_location
+
+    def get_pickup_location(self, street):
+        """Gets a location by the respective street name."""
+        for pickup_location in self.get_pickup_locations(street):
+            return pickup_location
+
+        raise LocationNotFound(street)
+
+    def by_address(self, street, house_number):
+        """Returns pickups by the respective address."""
+        pickup_location = self.get_pickup_location(street)
+
         try:
-            pickups = tuple(self.by_house_number(
+            pickups = tuple(self.by_pickup_location(
                 pickup_location, house_number))
         except LoadingLocations as loading_locations:
             for loading_location in loading_locations:
+                location_wrapper = LocationWrapper(
+                    pickup_location, loading_location.house_number)
                 pickups = tuple(self.by_loading_location(
-                    pickup_location, loading_location))
-                yield Pickup(pickup_location, house_number, pickups)
+                    loading_location, str(pickup_location)))
+                yield Pickup(pickups, loading_location=location_wrapper)
         else:
-            yield Pickup(pickup_location, house_number, pickups)
+            location_wrapper = LocationWrapper(pickup_location, house_number)
+            yield Pickup(pickups, pickup_location=location_wrapper)
 
 
 def main(options):
@@ -303,11 +332,9 @@ def main(options):
         exit(2)
 
     client = AhaDisposalClient()
-
-    for location in client.locations:
-        if street in location.street:
-            for pickup in client.pickups(location, house_number):
-                print(dumps(pickup.to_dict(), indent=2))
+    pickups = [pickup.to_dict() for pickup in client.by_address(
+        street, house_number)]
+    print(dumps(pickups, indent=2))
 
 
 if __name__ == '__main__':
