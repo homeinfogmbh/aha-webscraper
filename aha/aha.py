@@ -70,8 +70,9 @@ def html_content(items):
     """Yields HTML like content."""
 
     for item in items:
-        if not isinstance(item, Comment) and isinstance(item, NavigableString):
-            yield item
+        if isinstance(item, NavigableString):
+            if not isinstance(item, Comment):
+                yield item
 
 
 def parse_pickups(table):
