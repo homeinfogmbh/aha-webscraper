@@ -17,8 +17,13 @@ from bs4.element import NavigableString, Comment
 from requests import get
 
 
+__all__ = ['AhaDisposalClient']
+
+
 BASE_URL = 'https://www.aha-region.de/'
 DEFAULT_URL = urljoin(BASE_URL, 'abholtermine/abfuhrkalender')
+RESULT_START = '<!-- ###ERGEBNIS### start-->'
+RESULT_END = '<!-- ###ERGEBNIS### end-->'
 ADDRESS_LIST_START = (
     '<SELECT class=\'tab_body\' id="strasse" name="strasse" size="1">')
 ADDRESS_LIST_END = '</select>'
@@ -225,7 +230,7 @@ class AhaDisposalClient:
 
         if reply.status_code == 200:
             try:
-                _, start = reply.text.split('<!-- ###ERGEBNIS### start-->')
+                _, start = reply.text.split(RESULT_START)
             except ValueError:
                 result = {}
 
@@ -234,7 +239,7 @@ class AhaDisposalClient:
                         address, house_number,
                         pickup_location=pickup_location))
             else:
-                result, _ = start.split('<!-- ###ERGEBNIS### end-->')
+                result, _ = start.split(RESULT_END)
                 result = extract_results(result)
 
             return result
