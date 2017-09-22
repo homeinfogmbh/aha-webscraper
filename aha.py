@@ -19,7 +19,7 @@ from bs4.element import NavigableString, Comment
 from requests import get
 
 
-__all__ = ['AhaDisposalClient']
+__all__ = ['LocationNotFound', 'AhaDisposalClient']
 
 
 BASE_URL = 'https://www.aha-region.de/'
