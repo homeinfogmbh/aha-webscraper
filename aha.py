@@ -69,6 +69,8 @@ def normalize_street(street):
 def html_content(items):
     """Yields HTML like content."""
 
+    print('Items:', items)
+
     for item in items:
         if isinstance(item, NavigableString):
             if not isinstance(item, Comment):
@@ -250,7 +252,7 @@ class AhaDisposalClient:
         reply = get(self.url, params=params)
 
         if reply.status_code == 200:
-            html = BeautifulSoup(reply.text, 'html.parser')
+            html = BeautifulSoup(reply.text, 'html5lib')
             options = html.find(id='strasse').find_all('option')
 
             for option in options:
@@ -264,7 +266,7 @@ class AhaDisposalClient:
         reply = get(self.url, params=params)
 
         if reply.status_code == 200:
-            html = BeautifulSoup(reply.text, 'html.parser')
+            html = BeautifulSoup(reply.text, 'html5lib')
             table = html.find('table')
 
             if table is None:
@@ -282,7 +284,7 @@ class AhaDisposalClient:
         reply = get(self.url, params=params)
 
         if reply.status_code == 200:
-            html = BeautifulSoup(reply.text, 'html.parser')
+            html = BeautifulSoup(reply.text, 'html5lib')
             table = html.find('table')
 
             for pickup in parse_pickups(table):
