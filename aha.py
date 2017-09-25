@@ -69,8 +69,6 @@ def normalize_street(street):
 def html_content(items):
     """Yields HTML like content."""
 
-    print('Items:', items)
-
     for item in items:
         if isinstance(item, NavigableString):
             if not isinstance(item, Comment):
