@@ -93,10 +93,12 @@ def parse_pickups(table):
     """Parses pickups from the provided table."""
 
     tbody = table.find('tbody')
-    rows = tbody.find_all('tr')
 
-    for row in rows[1:-1]:    # Skip table header and footer
-        yield Pickup.from_html(row)
+    if tbody is not None:
+        rows = tbody.find_all('tr')
+
+        for row in rows[1:-1]:    # Skip table header and footer
+            yield Pickup.from_html(row)
 
 
 def get_loading_locations(html):
@@ -312,8 +314,9 @@ class AhaDisposalClient:
             html = BeautifulSoup(reply.text, 'html5lib')
             table = html.find('table')
 
-            for pickup in parse_pickups(table):
-                yield pickup
+            if table is not None:
+                for pickup in parse_pickups(table):
+                    yield pickup
 
     def get_pickup_locations(self, street):
         """Gets a location by the respective street name."""
