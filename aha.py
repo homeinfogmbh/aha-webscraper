@@ -68,6 +68,21 @@ def street_regex(street):
     return compile(street.replace('.', '.*'), flags=IGNORECASE)
 
 
+def normalize_houseno(house_number):
+    """Tries to remove leading zeros from the house number."""
+
+    house_number = house_number.strip()
+
+    for index, char in enumerate(house_number):
+        if char != '0':
+            break
+
+    try:
+        return house_number[index:]
+    except UnboundLocalError:
+        return house_number
+
+
 def html_content(items):
     """Yields HTML like content."""
 
@@ -310,6 +325,7 @@ class AhaDisposalClient:
     def by_address(self, street, house_number):
         """Returns pickups by the respective address."""
         street = street_regex(street)
+        house_number = normalize_houseno(house_number)
         pickup_location = self.get_pickup_location(street)
 
         try:
