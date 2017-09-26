@@ -107,8 +107,9 @@ def get_loading_locations(html):
 
     select = html.find(id='ladeort')
 
-    for option in select.find_all('option'):
-        yield LoadingLocation.from_html(option)
+    if select is not None:
+        for option in select.find_all('option'):
+            yield LoadingLocation.from_html(option)
 
 
 class LocationWrapper:
