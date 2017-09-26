@@ -11,6 +11,7 @@ Options:
 """
 from datetime import datetime
 from json import dumps
+from re import IGNORECASE, compile
 from sys import stderr
 from urllib.parse import urljoin
 
@@ -56,14 +57,15 @@ class LoadingLocations(Exception):
             yield location
 
 
-def normalize_street(street):
-    """Returns a normalized version of the street name."""
+def street_regex(street):
+    """Returns a regular expression to match the street name."""
 
     for key, value in STREET_MAP.items():
         if street.endswith(key):
-            return street.replace(key, value)
+            street = street.replace(key, value)
+            break
 
-    return street
+    return compile(street.replace('.', '.*'), flags=IGNORECASE)
 
 
 def html_content(items):
@@ -173,20 +175,24 @@ class PickupDate:
 class LoadingLocation:
     """A loading location."""
 
-    def __init__(self, key, street, house_number):
+    def __init__(self, key, street, house_number, district):
         """Sets key and name."""
         self.key = key
         self.street = street
         self.house_number = house_number
+        self.district = district
 
     @classmethod
     def from_html(cls, option):
         """Creates a loading location from HTML."""
-        key = option['value']
-        name = option.get_text().strip().strip(',')
-        *street, house_number = name.split()
-        street = ' '.join(street)
-        return cls(key, street, house_number)
+        key = option['value']   # Key must not be stripped and end with ' '.
+        content = option.get_text().strip()
+        address, district = content.split(',')
+        *street, house_number = address.split()
+        street = ' '.join(street).strip()
+        house_number = house_number.strip()
+        district = district.strip()
+        return cls(key, street, house_number, district)
 
 
 class PickupLocation:
@@ -269,9 +275,9 @@ class AhaDisposalClient:
 
             if table is None:
                 raise LoadingLocations(tuple(get_loading_locations(html)))
-            else:
-                for pickup in parse_pickups(table):
-                    yield pickup
+
+            for pickup in parse_pickups(table):
+                yield pickup
 
     def by_loading_location(self, loading_location, street_code):
         """Returns the respective pickups."""
@@ -291,7 +297,7 @@ class AhaDisposalClient:
     def get_pickup_locations(self, street):
         """Gets a location by the respective street name."""
         for pickup_location in self.pickup_locations:
-            if street in pickup_location.street:
+            if street.match(pickup_location.street):
                 yield pickup_location
 
     def get_pickup_location(self, street):
@@ -303,7 +309,7 @@ class AhaDisposalClient:
 
     def by_address(self, street, house_number):
         """Returns pickups by the respective address."""
-        street = normalize_street(street)
+        street = street_regex(street)
         pickup_location = self.get_pickup_location(street)
 
         try:
@@ -311,11 +317,12 @@ class AhaDisposalClient:
                 pickup_location, house_number))
         except LoadingLocations as loading_locations:
             for loading_location in loading_locations:
-                location_wrapper = LocationWrapper(
-                    pickup_location, loading_location.house_number)
-                pickups = tuple(self.by_loading_location(
-                    loading_location, str(pickup_location)))
-                yield Pickup(pickups, loading_location=location_wrapper)
+                if loading_location.house_number == house_number:
+                    location_wrapper = LocationWrapper(
+                        pickup_location, loading_location.house_number)
+                    pickups = tuple(self.by_loading_location(
+                        loading_location, str(pickup_location)))
+                    yield Pickup(pickups, loading_location=location_wrapper)
         else:
             location_wrapper = LocationWrapper(pickup_location, house_number)
             yield Pickup(pickups, pickup_location=location_wrapper)
@@ -326,13 +333,6 @@ def main(options):
 
     street = options['<street>']
     house_number = options['<house_number>']
-
-    try:
-        house_number = int(house_number)
-    except ValueError:
-        print('Invalid house number: {}.'.format(house_number), file=stderr)
-        exit(2)
-
     client = AhaDisposalClient()
     pickups = [pickup.to_dict() for pickup in client.by_address(
         street, house_number)]
