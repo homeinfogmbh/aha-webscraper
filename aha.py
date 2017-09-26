@@ -112,21 +112,6 @@ def get_loading_locations(html):
             yield LoadingLocation.from_html(option)
 
 
-class LocationWrapper:
-    """A location wrapper."""
-
-    def __init__(self, location, house_number):
-        """Sets location implementation and house number."""
-        self.location = location
-        self.house_number = house_number
-
-    def to_dict(self):
-        """Returns a JSON-ish dictionary."""
-        dictionary = self.location.to_dict()
-        dictionary['house_number'] = self.house_number
-        return dictionary
-
-
 class PickupInformation:
     """Pickup information."""
 
@@ -188,12 +173,24 @@ class PickupDate:
             'exceptional': self.exceptional}
 
 
-class LoadingLocation:
+class Location:
+    """Basic location."""
+
+    def to_dict(self):
+        """Returns a JSON-ish dictionary."""
+        return {
+            'code': self.code,
+            'street': self.street,
+            'house_number': self.house_number,
+            'district': self.district}
+
+
+class LoadingLocation(Location):
     """A loading location."""
 
-    def __init__(self, key, street, house_number, district):
-        """Sets key and name."""
-        self.key = key
+    def __init__(self, code, street, house_number, district):
+        """Sets code and name."""
+        self.code = code
         self.street = street
         self.house_number = house_number
         self.district = district
@@ -201,23 +198,24 @@ class LoadingLocation:
     @classmethod
     def from_html(cls, option):
         """Creates a loading location from HTML."""
-        key = option['value']   # Key must not be stripped and end with ' '.
+        code = option['value']   # Code must not be stripped and end with ' '.
         content = option.get_text().strip()
         address, district = content.split(',')
         *street, house_number = address.split()
         street = ' '.join(street).strip()
         house_number = house_number.strip()
-        district = district.strip()
-        return cls(key, street, house_number, district)
+        district = district.strip().strip('/').strip()
+        return cls(code, street, house_number, district or None)
 
 
-class PickupLocation:
+class PickupLocation(Location):
     """A pickup location."""
 
     def __init__(self, code, street, district):
         """Sets code, street and district."""
         self.code = code
         self.street = street
+        self.house_number = None
         self.district = district
 
     def __str__(self):
@@ -227,13 +225,6 @@ class PickupLocation:
     def from_string(cls, string):
         """Creates a pickup location from the provided string."""
         return cls(*string.split('@'))
-
-    def to_dict(self):
-        """Returns a JSON-ish dictionary."""
-        return {
-            'code': self.code,
-            'street': self.street,
-            'district': self.district}
 
 
 class Pickup:
@@ -300,7 +291,7 @@ class AhaDisposalClient:
         params = {
             'strasse': street_code,
             'hausnr': loading_location.house_number,
-            'ladeort': loading_location.key}
+            'ladeort': loading_location.code}
         reply = get(self.url, params=params)
 
         if reply.status_code == 200:
@@ -335,14 +326,12 @@ class AhaDisposalClient:
         except LoadingLocations as loading_locations:
             for loading_location in loading_locations:
                 if loading_location.house_number == house_number:
-                    location_wrapper = LocationWrapper(
-                        pickup_location, loading_location.house_number)
                     pickups = tuple(self.by_loading_location(
                         loading_location, str(pickup_location)))
-                    yield Pickup(pickups, loading_location=location_wrapper)
+                    yield Pickup(pickups, loading_location=loading_location)
         else:
-            location_wrapper = LocationWrapper(pickup_location, house_number)
-            yield Pickup(pickups, pickup_location=location_wrapper)
+            pickup_location.house_number = house_number
+            yield Pickup(pickups, pickup_location=pickup_location)
 
 
 def main(options):
