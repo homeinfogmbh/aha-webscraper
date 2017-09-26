@@ -317,6 +317,8 @@ class AhaDisposalClient:
 
     def get_pickup_locations(self, street):
         """Gets a location by the respective street name."""
+        street = street_regex(street)
+
         for pickup_location in self.pickup_locations:
             if street.match(pickup_location.street):
                 yield pickup_location
@@ -330,7 +332,6 @@ class AhaDisposalClient:
 
     def by_address(self, street, house_number):
         """Returns pickups by the respective address."""
-        street = street_regex(street)
         house_number = normalize_houseno(house_number)
         pickup_location = self.get_pickup_location(street)
 
