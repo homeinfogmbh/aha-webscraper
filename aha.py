@@ -1,14 +1,5 @@
-#! /usr/bin/env python3
-"""aha.py
+"""AHA garbage collection dates web scraper."""
 
-Web scrape AHA pickup locations.
-
-Usage:
-    aha.py <street> <house_number> [options]
-
-Options:
-    --help, -h          Print this.page.
-"""
 from datetime import datetime
 from json import dumps
 from re import IGNORECASE, compile as compile_re
@@ -351,18 +342,3 @@ class AhaDisposalClient:
         else:
             pickup_location.house_number = house_number
             return PickupInformation(pickups, pickup_location=pickup_location)
-
-
-def main(options):
-    """Runs the web scraper."""
-
-    street = options['<street>']
-    house_number = options['<house_number>']
-    client = AhaDisposalClient()
-    pickup_information = client.by_address(street, house_number)
-    print(pickup_information)
-
-
-if __name__ == '__main__':
-    from docopt import docopt
-    main(docopt(__doc__))
