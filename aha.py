@@ -11,8 +11,7 @@ Options:
 """
 from datetime import datetime
 from json import dumps
-from re import IGNORECASE, compile
-from sys import stderr
+from re import IGNORECASE, compile as compile_re
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
@@ -65,22 +64,20 @@ def street_regex(street):
             street = street.replace(key, value)
             break
 
-    return compile(street.replace('.', '.*'), flags=IGNORECASE)
+    return compile_re(street.replace('.', '.*'), flags=IGNORECASE)
 
 
 def normalize_houseno(house_number):
     """Tries to remove leading zeros from the house number."""
 
     house_number = house_number.strip()
+    index = 0
 
     for index, char in enumerate(house_number):
         if char != '0':
             break
 
-    try:
-        return house_number[index:]
-    except UnboundLocalError:
-        return house_number
+    return house_number[index:]
 
 
 def html_content(items):
@@ -99,7 +96,7 @@ def parse_pickups(table):
     rows = tbody.find_all('tr')
 
     for row in rows[1:-1]:    # Skip table header and footer
-        yield PickupInformation.from_html(row)
+        yield Pickup.from_html(row)
 
 
 def get_loading_locations(html):
@@ -112,16 +109,16 @@ def get_loading_locations(html):
             yield LoadingLocation.from_html(option)
 
 
-class PickupInformation:
-    """Pickup information."""
+class Pickup:
+    """Garbage pickup."""
 
-    def __init__(self, typ, weekday, interval, image_link, next_dates):
+    def __init__(self, typ, weekday, interval, image_link):
         """Sets pickup information data."""
         self.typ = typ
         self.weekday = weekday
         self.interval = interval
         self.image_link = image_link
-        self.next_dates = next_dates
+        self.next_dates = []
 
     @classmethod
     def from_html(cls, row):
@@ -130,13 +127,13 @@ class PickupInformation:
         image_link = image_link.find('img')['src']
         typ = typ.get_text().strip()
         weekday = weekday.get_text().strip()
-        next_dates = []
+        interval = interval.get_text().strip()
+        pickup = cls(typ, weekday, interval, image_link)
 
         for next_date in html_content(next_dates_.contents):
-            next_dates.append(PickupDate.from_string(next_date))
+            pickup.next_dates.append(PickupDate.from_string(next_date))
 
-        interval = interval.get_text().strip()
-        return cls(typ, weekday, interval, image_link, next_dates)
+        return pickup
 
     def to_dict(self):
         """Returns a JSON-ish dictionary."""
@@ -176,6 +173,18 @@ class PickupDate:
 class Location:
     """Basic location."""
 
+    def __init__(self, code, street, house_number, district):
+        """Sets code and name."""
+        self.code = code
+        self.street = street
+        self.house_number = house_number
+        self.district = district
+
+    @property
+    def address(self):
+        """Returns street and house number."""
+        return '{} {}'.format(self.street, self.house_number or 'N/A')
+
     def to_dict(self):
         """Returns a JSON-ish dictionary."""
         return {
@@ -187,13 +196,6 @@ class Location:
 
 class LoadingLocation(Location):
     """A loading location."""
-
-    def __init__(self, code, street, house_number, district):
-        """Sets code and name."""
-        self.code = code
-        self.street = street
-        self.house_number = house_number
-        self.district = district
 
     @classmethod
     def from_html(cls, option):
@@ -211,23 +213,18 @@ class LoadingLocation(Location):
 class PickupLocation(Location):
     """A pickup location."""
 
-    def __init__(self, code, street, district):
-        """Sets code, street and district."""
-        self.code = code
-        self.street = street
-        self.house_number = None
-        self.district = district
-
     def __str__(self):
+        """Returns the AHA string representation."""
         return '@'.join((self.code, self.street, self.district))
 
     @classmethod
     def from_string(cls, string):
         """Creates a pickup location from the provided string."""
-        return cls(*string.split('@'))
+        code, street, district = string.split('@')
+        return cls(code, street, None, district)
 
 
-class Pickup:
+class PickupInformation:
     """A pickup location with dates."""
 
     def __init__(self, pickups, pickup_location=None, loading_location=None):
@@ -236,9 +233,26 @@ class Pickup:
         self.pickup_location = pickup_location
         self.loading_location = loading_location
 
+    def __iter__(self):
+        """Yields pickups."""
+        for pickup in self.pickups:
+            yield pickup
+
+    def __str__(self):
+        """Returns the dumped dictionary."""
+        return dumps(self.to_dict(), indent=2)
+
+    @property
+    def pickup(self):
+        """Returns True on pickup or False on loading location."""
+        if self.pickup_location:
+            return True
+
+        return False
+
     def to_dict(self):
         """Returns a JSON-ish dictionary."""
-        dictionary = {'pickups': [pickup.to_dict() for pickup in self.pickups]}
+        dictionary = {'pickups': [pickup.to_dict() for pickup in self]}
 
         if self.pickup_location:
             dictionary['pickup_location'] = self.pickup_location.to_dict()
@@ -328,10 +342,11 @@ class AhaDisposalClient:
                 if loading_location.house_number == house_number:
                     pickups = tuple(self.by_loading_location(
                         loading_location, str(pickup_location)))
-                    yield Pickup(pickups, loading_location=loading_location)
+                    return PickupInformation(
+                        pickups, loading_location=loading_location)
         else:
             pickup_location.house_number = house_number
-            yield Pickup(pickups, pickup_location=pickup_location)
+            return PickupInformation(pickups, pickup_location=pickup_location)
 
 
 def main(options):
@@ -340,9 +355,8 @@ def main(options):
     street = options['<street>']
     house_number = options['<house_number>']
     client = AhaDisposalClient()
-    pickups = [pickup.to_dict() for pickup in client.by_address(
-        street, house_number)]
-    print(dumps(pickups, indent=2))
+    pickup_information = client.by_address(street, house_number)
+    print(pickup_information)
 
 
 if __name__ == '__main__':
