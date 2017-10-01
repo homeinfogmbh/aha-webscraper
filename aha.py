@@ -61,23 +61,15 @@ def street_regex(street):
 def normalize_houseno(house_number):
     """Tries to remove leading zeros from the house number."""
 
-    house_number = house_number.strip()
-    index = 0
-
-    for index, char in enumerate(house_number):
-        if char != '0':
-            break
-
-    return house_number[index:]
+    return house_number.strip().lstrip('0')
 
 
 def html_content(items):
     """Yields HTML like content."""
 
     for item in items:
-        if isinstance(item, NavigableString):
-            if not isinstance(item, Comment):
-                yield item
+        if isinstance(item, NavigableString) and not isinstance(item, Comment):
+            yield item
 
 
 def parse_pickups(table):
