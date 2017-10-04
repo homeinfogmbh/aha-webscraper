@@ -80,7 +80,7 @@ def parse_pickups(table):
     if tbody is not None:
         rows = tbody.find_all('tr')
 
-        for row in rows[1:-1]:    # Skip table header and footer
+        for row in rows[1:-1]:    # Skip table header and footer.
             yield Pickup.from_html(row)
 
 
