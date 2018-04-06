@@ -195,10 +195,10 @@ class PickupLocation(Location):
         return '@'.join((self.code, self.street, self.district))
 
     @classmethod
-    def from_string(cls, string):
+    def from_string(cls, string, house_number=None):
         """Creates a pickup location from the provided string."""
         code, street, district = string.split('@')
-        return cls(code, street, None, district)
+        return cls(code, street, house_number, district)
 
 
 class PickupInformation(namedtuple(
@@ -243,8 +243,7 @@ class AhaDisposalClient:
         self.url = url
         self.district = district
 
-    @property
-    def pickup_locations(self):
+    def pickup_locations(self, house_number=None):
         """Yields the respective pickup addresses."""
         params = {'von': 'A', 'bis': '[', 'gemeinde': self.district}
         reply = get(self.url, params=params)
@@ -254,7 +253,8 @@ class AhaDisposalClient:
             options = html.find(id='strasse').find_all('option')
 
             for option in options:
-                yield PickupLocation.from_string(str(option['value']))
+                yield PickupLocation.from_string(
+                    str(option['value']), house_number=house_number)
 
     def by_pickup_location(self, pickup_location, house_number):
         """Returns the respective pickups."""
@@ -289,17 +289,19 @@ class AhaDisposalClient:
                 for pickup in parse_pickups(table):
                     yield pickup
 
-    def get_pickup_locations(self, street):
+    def get_pickup_locations(self, street, house_number=None):
         """Gets a location by the respective street name."""
         street = street_regex(street)
 
-        for pickup_location in self.pickup_locations:
+        for pickup_location in self.pickup_locations(
+                house_number=house_number):
             if street.match(pickup_location.street):
                 yield pickup_location
 
-    def get_pickup_location(self, street):
+    def get_pickup_location(self, street, house_number=None):
         """Gets a location by the respective street name."""
-        for pickup_location in self.get_pickup_locations(street):
+        for pickup_location in self.get_pickup_locations(
+                street, house_number=house_number):
             return pickup_location
 
         raise LocationNotFound(street)
@@ -307,7 +309,8 @@ class AhaDisposalClient:
     def by_address(self, street, house_number):
         """Returns pickups by the respective address."""
         house_number = normalize_houseno(house_number)
-        pickup_location = self.get_pickup_location(street)
+        pickup_location = self.get_pickup_location(
+            street, house_number=house_number)
 
         try:
             pickups = tuple(self.by_pickup_location(
@@ -319,5 +322,4 @@ class AhaDisposalClient:
                         loading_location, str(pickup_location)))
                     return PickupInformation(pickups, None, loading_location)
         else:
-            pickup_location.house_number = house_number
             return PickupInformation(pickups, pickup_location, None)
