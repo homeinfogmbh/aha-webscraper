@@ -9,9 +9,9 @@ Usage:
 Options:
     --help, -h          Print this.page.
 """
-from aha import AhaDisposalClient
-
 from docopt import docopt
+
+from aha import AhaDisposalClient
 
 
 def main(options):
