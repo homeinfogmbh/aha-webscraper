@@ -1,6 +1,7 @@
 """AHA garbage collection dates web scraper."""
 
 from collections import namedtuple
+from contextlib import suppress
 from datetime import datetime
 from json import dumps
 from re import IGNORECASE, compile as compile_re
@@ -23,6 +24,12 @@ STREET_MAP = {
     'straße': 'str',
     'Strasse': 'Str.',
     'Straße': 'Str.'}
+
+
+class NotAPickup(Exception):
+    """Indicates that the respective row is not a Pickup."""
+
+    pass
 
 
 class LocationNotFound(Exception):
@@ -82,7 +89,8 @@ def parse_pickups(table):
         rows = tbody.find_all('tr')
 
         for row in rows[1:-1]:    # Skip table header and footer.
-            yield Pickup.from_html(row)
+            with suppress(NotAPickup):
+                yield Pickup.from_html(row)
 
 
 def get_loading_locations(html):
@@ -102,14 +110,18 @@ class Pickup(namedtuple(
     @classmethod
     def from_html(cls, row):
         """Creates pickup information from an HTML <td> row."""
-        image_link, typ, weekday, next_dates_, interval = row.find_all('td')
+        try:
+            image_link, typ, weekday, next_dates, interval = row.find_all('td')
+        except ValueError:
+            raise NotAPickup(row)
+
         image_link = image_link.find('img')['src']
         typ = typ.get_text().strip()
         weekday = weekday.get_text().strip()
         interval = interval.get_text().strip()
         next_dates = [
             PickupDate.from_string(next_date) for next_date
-            in html_content(next_dates_.contents)]
+            in html_content(next_dates.contents)]
         return cls(typ, weekday, interval, image_link, next_dates)
 
     def to_dict(self):
