@@ -9,8 +9,9 @@ Usage:
 Options:
     --help, -h          Print this.page.
 """
-
 from aha import AhaDisposalClient
+
+from docopt import docopt
 
 
 def main(options):
@@ -24,5 +25,4 @@ def main(options):
 
 
 if __name__ == '__main__':
-    from docopt import docopt
     main(docopt(__doc__))
