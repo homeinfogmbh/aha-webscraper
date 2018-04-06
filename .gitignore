@@ -1,2 +1,3 @@
 *.pyc
 build/*
+.installed_files.txt

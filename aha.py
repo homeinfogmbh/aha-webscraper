@@ -1,5 +1,6 @@
 """AHA garbage collection dates web scraper."""
 
+from collections import namedtuple
 from datetime import datetime
 from json import dumps
 from re import IGNORECASE, compile as compile_re
@@ -94,16 +95,9 @@ def get_loading_locations(html):
             yield LoadingLocation.from_html(option)
 
 
-class Pickup:
+class Pickup(namedtuple(
+        'Pickup', 'typ weekday interval image_link next_dates')):
     """Garbage pickup."""
-
-    def __init__(self, typ, weekday, interval, image_link):
-        """Sets pickup information data."""
-        self.typ = typ
-        self.weekday = weekday
-        self.interval = interval
-        self.image_link = image_link
-        self.next_dates = []
 
     @classmethod
     def from_html(cls, row):
@@ -113,12 +107,10 @@ class Pickup:
         typ = typ.get_text().strip()
         weekday = weekday.get_text().strip()
         interval = interval.get_text().strip()
-        pickup = cls(typ, weekday, interval, image_link)
-
-        for next_date in html_content(next_dates_.contents):
-            pickup.next_dates.append(PickupDate.from_string(next_date))
-
-        return pickup
+        next_dates = [
+            PickupDate.from_string(next_date) for next_date
+            in html_content(next_dates_.contents)]
+        return cls(typ, weekday, interval, image_link, next_dates)
 
     def to_dict(self):
         """Returns a JSON-ish dictionary."""
@@ -130,13 +122,8 @@ class Pickup:
             'next_dates': [date.to_dict() for date in self.next_dates]}
 
 
-class PickupDate:
+class PickupDate(namedtuple('PickupDate', ('date', 'weekday', 'exceptional'))):
     """A pickup date."""
-
-    def __init__(self, date, weekday=None, exceptional=False):
-        self.date = date
-        self.weekday = weekday
-        self.exceptional = exceptional
 
     @classmethod
     def from_string(cls, string):
@@ -145,7 +132,7 @@ class PickupDate:
         exceptional = date.endswith('*')
         date = date.strip('*').strip()
         date = datetime.strptime(date, '%d.%m.%Y').date()
-        return cls(date, weekday=weekday, exceptional=exceptional)
+        return cls(date, weekday, exceptional)
 
     def to_dict(self):
         """Returns a JSON-ish dictionary."""
@@ -155,15 +142,8 @@ class PickupDate:
             'exceptional': self.exceptional}
 
 
-class Location:
+class Location(namedtuple('Location', 'code street house_number district')):
     """Basic location."""
-
-    def __init__(self, code, street, house_number, district):
-        """Sets code and name."""
-        self.code = code
-        self.street = street
-        self.house_number = house_number
-        self.district = district
 
     @property
     def address(self):
@@ -209,14 +189,9 @@ class PickupLocation(Location):
         return cls(code, street, None, district)
 
 
-class PickupInformation:
+class PickupInformation(namedtuple(
+        'PickupInformation', 'pickups pickup_location loading_location')):
     """A pickup location with dates."""
-
-    def __init__(self, pickups, pickup_location=None, loading_location=None):
-        """Sets street, house number and pickups."""
-        self.pickups = pickups
-        self.pickup_location = pickup_location
-        self.loading_location = loading_location
 
     def __iter__(self):
         """Yields pickups."""
@@ -252,6 +227,7 @@ class AhaDisposalClient:
     """Client to web-scrape the AHA garbage disposal dates API."""
 
     def __init__(self, url=DEFAULT_URL, district='Hannover'):
+        """Sets URL and district."""
         self.url = url
         self.district = district
 
@@ -329,8 +305,7 @@ class AhaDisposalClient:
                 if loading_location.house_number == house_number:
                     pickups = tuple(self.by_loading_location(
                         loading_location, str(pickup_location)))
-                    return PickupInformation(
-                        pickups, loading_location=loading_location)
+                    return PickupInformation(pickups, None, loading_location)
         else:
             pickup_location.house_number = house_number
-            return PickupInformation(pickups, pickup_location=pickup_location)
+            return PickupInformation(pickups, pickup_location, None)
