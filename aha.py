@@ -180,8 +180,7 @@ class LoadingLocation(Location):
         code = option['value']   # Code must not be stripped and end with ' '.
         content = option.get_text().strip()
         address, district = content.split(',')
-        *street, house_number = address.split()
-        street = ' '.join(street).strip()
+        street, house_number = address.rsplit(maxsplit=1)
         house_number = house_number.strip()
         district = district.strip().strip('/').strip()
         return cls(code, street, house_number, district or None)
