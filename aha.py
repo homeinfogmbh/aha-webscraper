@@ -216,7 +216,7 @@ class PickupLocation(Location):
 
 
 class PickupInformation(namedtuple(
-        'PickupInformation', 'pickups pickup_location loading_locations')):
+        'PickupInformation', 'pickups pickup_location')):
     """A pickup location with dates."""
 
     def __iter__(self):
@@ -227,14 +227,6 @@ class PickupInformation(namedtuple(
     def __str__(self):
         """Returns the dumped dictionary."""
         return dumps(self.to_dict(), indent=2)
-
-    @property
-    def pickup(self):
-        """Returns True on pickup or False on loading location."""
-        if self.pickup_location:
-            return True
-
-        return False
 
     def to_dict(self):
         """Returns a JSON-ish dictionary."""
@@ -247,12 +239,15 @@ class PickupInformation(namedtuple(
         if self.pickup_location:
             dictionary['pickup_location'] = self.pickup_location.to_dict()
 
-        if self.loading_locations:
-            dictionary['loading_locations'] = [
-                loading_location.to_dict() for loading_location
-                in self.loading_locations]
-
         return dictionary
+
+
+class LoadingInformation(list):
+    """A series of loading information."""
+
+    def to_dict(self):
+        """Returns a JSON-ish list."""
+        return self
 
 
 class AhaDisposalClient:
@@ -341,6 +336,6 @@ class AhaDisposalClient:
                     loading_location, pickup_location))
                 loading_location.pickups = pickups
 
-            return PickupInformation(None, None, loading_locations)
+            return LoadingInformation(loading_locations)
 
-        return PickupInformation(pickups, pickup_location, None)
+        return PickupInformation(pickups, pickup_location)
