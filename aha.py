@@ -179,6 +179,10 @@ class LoadingLocation(Location):
         super().__init__()
         self.pickups = ()
 
+    def __str__(self):
+        """Returns the AHA string representation."""
+        return '@'.join((self.code.strip(), self.street, self.district))
+
     @classmethod
     def from_html(cls, option):
         """Creates a loading location from HTML."""
@@ -188,7 +192,7 @@ class LoadingLocation(Location):
         street, house_number = address.rsplit(maxsplit=1)
         house_number = house_number.strip()
         district = district.strip().strip('/').strip()
-        return cls(code, street, house_number, district or None)
+        return cls(code, street, house_number, district)
 
     def to_dict(self):
         """Returns a JSON-ish dictionary."""
@@ -289,11 +293,11 @@ class AhaDisposalClient:
             for pickup in parse_pickups(table):
                 yield pickup
 
-    def by_loading_location(self, loading_location, street_code):
+    def by_loading_location(self, loading_location, pickup_location):
         """Returns the respective pickups."""
         params = {
-            'strasse': street_code,
-            'hausnr': loading_location.house_number,
+            'strasse': str(pickup_location),
+            'hausnr': pickup_location.house_number,
             'ladeort': loading_location.code}
         reply = get(self.url, params=params)
 
@@ -333,8 +337,9 @@ class AhaDisposalClient:
                 pickup_location, house_number))
         except LoadingLocations as loading_locations:
             for loading_location in loading_locations:
-                loading_location.pickups = tuple(self.by_loading_location(
-                    loading_location, str(pickup_location)))
+                pickups = tuple(self.by_loading_location(
+                    loading_location, pickup_location))
+                loading_location.pickups = pickups
 
             return PickupInformation(None, None, loading_locations)
 
