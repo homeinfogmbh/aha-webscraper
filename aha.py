@@ -174,6 +174,11 @@ class Location(namedtuple('Location', 'code street house_number district')):
 class LoadingLocation(Location):
     """A loading location."""
 
+    def __init__(self, *args, **kwargs):
+        """Sets the pickups."""
+        super().__init__(*args, **kwargs)
+        self.pickups = ()
+
     @classmethod
     def from_html(cls, option):
         """Creates a loading location from HTML."""
@@ -184,6 +189,12 @@ class LoadingLocation(Location):
         house_number = house_number.strip()
         district = district.strip().strip('/').strip()
         return cls(code, street, house_number, district or None)
+
+    def to_dict(self):
+        """Returns a JSON-ish dictionary."""
+        dictionary = super().to_dict()
+        dictionary['pickups'] = [pickup.to_dict() for pickup in self.pickups]
+        return dictionary
 
 
 class PickupLocation(Location):
@@ -201,7 +212,7 @@ class PickupLocation(Location):
 
 
 class PickupInformation(namedtuple(
-        'PickupInformation', 'pickups pickup_location loading_location')):
+        'PickupInformation', 'pickups pickup_location loading_locations')):
     """A pickup location with dates."""
 
     def __iter__(self):
@@ -223,13 +234,19 @@ class PickupInformation(namedtuple(
 
     def to_dict(self):
         """Returns a JSON-ish dictionary."""
-        dictionary = {'pickups': [pickup.to_dict() for pickup in self]}
+        dictionary = {}
+
+        if self.pickups is not None:
+            dictionary['pickups'] = [
+                pickup.to_dict() for pickup in self.pickups]
 
         if self.pickup_location:
             dictionary['pickup_location'] = self.pickup_location.to_dict()
 
-        if self.loading_location:
-            dictionary['loading_location'] = self.loading_location.to_dict()
+        if self.loading_locations:
+            dictionary['loading_locations'] = [
+                loading_location.to_dict() for loading_location
+                in self.loading_locations]
 
         return dictionary
 
@@ -316,9 +333,9 @@ class AhaDisposalClient:
                 pickup_location, house_number))
         except LoadingLocations as loading_locations:
             for loading_location in loading_locations:
-                if loading_location.house_number == house_number:
-                    pickups = tuple(self.by_loading_location(
-                        loading_location, str(pickup_location)))
-                    return PickupInformation(pickups, None, loading_location)
-        else:
-            return PickupInformation(pickups, pickup_location, None)
+                loading_location.pickups = tuple(self.by_loading_location(
+                    loading_location, str(pickup_location)))
+
+            return PickupInformation(None, None, loading_locations)
+
+        return PickupInformation(pickups, pickup_location, None)
