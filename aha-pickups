@@ -7,7 +7,8 @@ Usage:
     aha.py <street> <house_number> [options]
 
 Options:
-    --help, -h          Print this.page.
+    --district=<district>, -d   Sepcifies the district [default: Hannover].
+    --help, -h                  Print this.page.
 """
 from docopt import docopt
 
@@ -19,7 +20,8 @@ def main(options):
 
     street = options['<street>']
     house_number = options['<house_number>']
-    client = AhaDisposalClient()
+    district = options['--district']
+    client = AhaDisposalClient(district=district)
     pickup_information = client.by_address(street, house_number)
     print(pickup_information)
 
