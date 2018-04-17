@@ -247,7 +247,7 @@ class LoadingInformation(list):
 
     def to_dict(self):
         """Returns a JSON-ish list."""
-        return self
+        return [loading_location.to_dict() for loading_location in self]
 
 
 class AhaDisposalClient:
