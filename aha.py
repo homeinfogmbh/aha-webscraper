@@ -174,9 +174,9 @@ class Location(namedtuple('Location', 'code street house_number district')):
 class LoadingLocation(Location):
     """A loading location."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *_):
         """Sets the pickups."""
-        super().__init__(*args, **kwargs)
+        super().__init__()
         self.pickups = ()
 
     @classmethod
