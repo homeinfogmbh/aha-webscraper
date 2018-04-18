@@ -4,7 +4,7 @@ from collections import namedtuple
 from contextlib import suppress
 from datetime import datetime
 from json import dumps
-from re import IGNORECASE, compile as compile_re
+from re import IGNORECASE, compile as compile_
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
@@ -16,7 +16,8 @@ __all__ = ['LocationNotFound', 'AhaDisposalClient']
 
 
 BASE_URL = 'https://www.aha-region.de/'
-DEFAULT_URL = urljoin(BASE_URL, 'abholtermine/abfuhrkalender')
+URL = urljoin(BASE_URL, 'abholtermine/abfuhrkalender')
+DEFAULT_DISTRICT = 'Hannover'
 
 
 STREET_MAP = {
@@ -63,7 +64,7 @@ def street_regex(street):
             street = street.replace(key, value)
             break
 
-    return compile_re(street.replace('.', '.*'), flags=IGNORECASE)
+    return compile_(street.replace('.', '.*'), flags=IGNORECASE)
 
 
 def normalize_houseno(house_number):
@@ -100,7 +101,44 @@ def get_loading_locations(html):
 
     if select is not None:
         for option in select.find_all('option'):
-            yield LoadingLocation.from_html(option)
+            yield Location.from_html(option)
+
+
+def by_pickup_location(pickup_location, house_number):
+    """Returns the respective pickups by a pickup location."""
+
+    params = {
+        'strasse': str(pickup_location),
+        'hausnr': house_number}
+    reply = get(URL, params=params)
+
+    if reply.status_code == 200:
+        html = BeautifulSoup(reply.text, 'html5lib')
+        table = html.find('table')
+
+        if table is None:
+            raise LoadingLocations(tuple(get_loading_locations(html)))
+
+        for pickup in parse_pickups(table):
+            yield pickup
+
+
+def by_loading_location(loading_location, pickup_location):
+    """Returns the respective pickups by a loading location."""
+
+    params = {
+        'strasse': str(pickup_location),
+        'hausnr': pickup_location.house_number,
+        'ladeort': loading_location.code}
+    reply = get(URL, params=params)
+
+    if reply.status_code == 200:
+        html = BeautifulSoup(reply.text, 'html5lib')
+        table = html.find('table')
+
+        if table is not None:
+            for pickup in parse_pickups(table):
+                yield pickup
 
 
 class Pickup(namedtuple(
@@ -157,6 +195,27 @@ class PickupDate(namedtuple('PickupDate', ('date', 'weekday', 'exceptional'))):
 class Location(namedtuple('Location', 'code street house_number district')):
     """Basic location."""
 
+    def __str__(self):
+        """Returns the AHA string representation."""
+        return '@'.join((self.code, self.street, self.district))
+
+    @classmethod
+    def from_string(cls, string, house_number=None):
+        """Creates a pickup location from the provided string."""
+        code, street, district = string.split('@')
+        return cls(code, street, house_number, district)
+
+    @classmethod
+    def from_html(cls, option):
+        """Creates a loading location from HTML."""
+        code = option['value']   # Code must not be stripped.
+        content = option.get_text().strip()
+        address, district = content.split(',')
+        street, house_number = address.rsplit(maxsplit=1)
+        house_number = house_number.strip()
+        district = district.strip().strip('/').strip()
+        return cls(code, street, house_number, district)
+
     @property
     def address(self):
         """Returns street and house number."""
@@ -171,171 +230,73 @@ class Location(namedtuple('Location', 'code street house_number district')):
             'district': self.district}
 
 
-class LoadingLocation(Location):
-    """A loading location."""
-
-    def __init__(self, *_):
-        """Sets the pickups."""
-        super().__init__()
-        self.pickups = ()
+class PickupSolution(namedtuple('PickupSolution', ('location', 'pickups'))):
+    """A series of loading information."""
 
     def __str__(self):
-        """Returns the AHA string representation."""
-        return '@'.join((self.code.strip(), self.street, self.district))
-
-    @classmethod
-    def from_html(cls, option):
-        """Creates a loading location from HTML."""
-        code = option['value']   # Code must not be stripped and end with ' '.
-        content = option.get_text().strip()
-        address, district = content.split(',')
-        street, house_number = address.rsplit(maxsplit=1)
-        house_number = house_number.strip()
-        district = district.strip().strip('/').strip()
-        return cls(code, street, house_number, district)
-
-    def to_dict(self):
-        """Returns a JSON-ish dictionary."""
-        dictionary = super().to_dict()
-        dictionary['pickups'] = [pickup.to_dict() for pickup in self.pickups]
-        return dictionary
-
-
-class PickupLocation(Location):
-    """A pickup location."""
-
-    def __str__(self):
-        """Returns the AHA string representation."""
-        return '@'.join((self.code, self.street, self.district))
-
-    @classmethod
-    def from_string(cls, string, house_number=None):
-        """Creates a pickup location from the provided string."""
-        code, street, district = string.split('@')
-        return cls(code, street, house_number, district)
-
-
-class PickupInformation(namedtuple(
-        'PickupInformation', 'pickups pickup_location')):
-    """A pickup location with dates."""
-
-    def __iter__(self):
-        """Yields pickups."""
-        for pickup in self.pickups:
-            yield pickup
-
-    def __str__(self):
-        """Returns the dumped dictionary."""
+        """Returns the respective JSON data."""
         return dumps(self.to_dict(), indent=2)
 
     def to_dict(self):
-        """Returns a JSON-ish dictionary."""
-        dictionary = {}
-
-        if self.pickups is not None:
-            dictionary['pickups'] = [
-                pickup.to_dict() for pickup in self.pickups]
-
-        if self.pickup_location:
-            dictionary['pickup_location'] = self.pickup_location.to_dict()
-
-        return dictionary
-
-
-class LoadingInformation(list):
-    """A series of loading information."""
-
-    def to_dict(self):
         """Returns a JSON-ish list."""
-        return [loading_location.to_dict() for loading_location in self]
+        return {
+            'location': self.location.to_dict(),
+            'pickups': [pickup.to_dict() for pickup in self.pickups]}
 
 
 class AhaDisposalClient:
     """Client to web-scrape the AHA garbage disposal dates API."""
 
-    def __init__(self, url=DEFAULT_URL, district='Hannover'):
+    def __init__(self, district=DEFAULT_DISTRICT):
         """Sets URL and district."""
-        self.url = url
         self.district = district
 
-    def pickup_locations(self, house_number=None):
+    def _pickup_locations(self, house_number=None):
         """Yields the respective pickup addresses."""
         params = {'von': 'A', 'bis': '[', 'gemeinde': self.district}
-        reply = get(self.url, params=params)
+        reply = get(URL, params=params)
 
         if reply.status_code == 200:
             html = BeautifulSoup(reply.text, 'html5lib')
             options = html.find(id='strasse').find_all('option')
 
             for option in options:
-                yield PickupLocation.from_string(
+                yield Location.from_string(
                     str(option['value']), house_number=house_number)
 
-    def by_pickup_location(self, pickup_location, house_number):
-        """Returns the respective pickups."""
-        params = {
-            'strasse': str(pickup_location),
-            'hausnr': house_number}
-        reply = get(self.url, params=params)
-
-        if reply.status_code == 200:
-            html = BeautifulSoup(reply.text, 'html5lib')
-            table = html.find('table')
-
-            if table is None:
-                raise LoadingLocations(tuple(get_loading_locations(html)))
-
-            for pickup in parse_pickups(table):
-                yield pickup
-
-    def by_loading_location(self, loading_location, pickup_location):
-        """Returns the respective pickups."""
-        params = {
-            'strasse': str(pickup_location),
-            'hausnr': pickup_location.house_number,
-            'ladeort': loading_location.code}
-        reply = get(self.url, params=params)
-
-        if reply.status_code == 200:
-            html = BeautifulSoup(reply.text, 'html5lib')
-            table = html.find('table')
-
-            if table is not None:
-                for pickup in parse_pickups(table):
-                    yield pickup
-
-    def get_pickup_locations(self, street, house_number=None):
+    def _get_pickup_locations(self, street, house_number=None):
         """Gets a location by the respective street name."""
         street = street_regex(street)
 
-        for pickup_location in self.pickup_locations(
+        for pickup_location in self._pickup_locations(
                 house_number=house_number):
             if street.match(pickup_location.street):
                 yield pickup_location
 
-    def get_pickup_location(self, street, house_number=None):
+    def _get_pickup_location(self, street, house_number=None):
         """Gets a location by the respective street name."""
-        for pickup_location in self.get_pickup_locations(
+        for pickup_location in self._get_pickup_locations(
                 street, house_number=house_number):
             return pickup_location
 
         raise LocationNotFound(street)
 
-    def by_address(self, street, house_number):
-        """Returns pickups by the respective address."""
+    def by_street_houseno(self, street, house_number):
+        """Yields pickup solutions by the respective address."""
         house_number = normalize_houseno(house_number)
-        pickup_location = self.get_pickup_location(
+        pickup_location = self._get_pickup_location(
             street, house_number=house_number)
 
         try:
-            pickups = tuple(self.by_pickup_location(
-                pickup_location, house_number))
+            pickups = tuple(by_pickup_location(pickup_location, house_number))
         except LoadingLocations as loading_locations:
             for loading_location in loading_locations:
-                pickups = tuple(self.by_loading_location(
+                pickups = tuple(by_loading_location(
                     loading_location, pickup_location))
-                loading_location.pickups = pickups
+                yield PickupSolution(loading_location, pickups)
 
-            return LoadingInformation(loading_locations)
+        yield PickupSolution(pickup_location, pickups)
 
-        return PickupInformation(pickups, pickup_location)
+    def by_address(self, address):
+        """Yields the respective pickups by the respective address."""
+        return self.by_street_houseno(address.street, address.house_number)

@@ -22,8 +22,9 @@ def main(options):
     house_number = options['<house_number>']
     district = options['--district']
     client = AhaDisposalClient(district=district)
-    pickup_information = client.by_address(street, house_number)
-    print(pickup_information)
+
+    for pickup_solution in client.by_street_houseno(street, house_number):
+        print(pickup_solution)
 
 
 if __name__ == '__main__':
