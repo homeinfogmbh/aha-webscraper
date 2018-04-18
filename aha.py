@@ -239,9 +239,9 @@ class PickupSolution(namedtuple('PickupSolution', ('location', 'pickups'))):
 
     def to_dict(self):
         """Returns a JSON-ish list."""
-        return {
-            'location': self.location.to_dict(),
-            'pickups': [pickup.to_dict() for pickup in self.pickups]}
+        dictionary = self.location.to_dict()
+        dictionary['pickups'] = [pickup.to_dict() for pickup in self.pickups]
+        return dictionary
 
 
 class AhaDisposalClient:
