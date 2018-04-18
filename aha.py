@@ -294,8 +294,8 @@ class AhaDisposalClient:
                 pickups = tuple(by_loading_location(
                     loading_location, pickup_location))
                 yield PickupSolution(loading_location, pickups)
-
-        yield PickupSolution(pickup_location, pickups)
+        else:
+            yield PickupSolution(pickup_location, pickups)
 
     def by_address(self, address):
         """Yields the respective pickups by the respective address."""
