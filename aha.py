@@ -145,6 +145,8 @@ class Pickup(namedtuple(
         'Pickup', 'typ weekday interval image_link next_dates')):
     """Garbage pickup."""
 
+    __slots__ = ()
+
     @classmethod
     def from_html(cls, row):
         """Creates pickup information from an HTML <td> row."""
@@ -175,6 +177,8 @@ class Pickup(namedtuple(
 class PickupDate(namedtuple('PickupDate', ('date', 'weekday', 'exceptional'))):
     """A pickup date."""
 
+    __slots__ = ()
+
     @classmethod
     def from_string(cls, string):
         """Creates a new pickup date from the provided string."""
@@ -194,6 +198,8 @@ class PickupDate(namedtuple('PickupDate', ('date', 'weekday', 'exceptional'))):
 
 class Location(namedtuple('Location', 'code street house_number district')):
     """Basic location."""
+
+    __slots__ = ()
 
     def __str__(self):
         """Returns the AHA string representation."""
@@ -232,6 +238,8 @@ class Location(namedtuple('Location', 'code street house_number district')):
 
 class PickupSolution(namedtuple('PickupSolution', ('location', 'pickups'))):
     """A series of loading information."""
+
+    __slots__ = ()
 
     def __str__(self):
         """Returns the respective JSON data."""
