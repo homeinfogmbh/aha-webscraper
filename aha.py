@@ -142,7 +142,7 @@ def by_loading_location(loading_location, pickup_location):
 
 
 class Pickup(namedtuple(
-        'Pickup', 'typ weekday interval image_link next_dates')):
+        'Pickup', 'type weekday interval image_link next_dates')):
     """Garbage pickup."""
 
     __slots__ = ()
@@ -167,7 +167,7 @@ class Pickup(namedtuple(
     def to_dict(self):
         """Returns a JSON-ish dictionary."""
         return {
-            'type': self.typ,
+            'type': self.type,
             'weekday': self.weekday,
             'interval': self.interval,
             'image_link': urljoin(BASE_URL, self.image_link),
