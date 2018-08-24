@@ -164,14 +164,14 @@ class Pickup(namedtuple(
             in html_content(next_dates.contents)]
         return cls(typ, weekday, interval, image_link, next_dates)
 
-    def to_dict(self):
+    def to_json(self):
         """Returns a JSON-ish dictionary."""
         return {
             'type': self.type,
             'weekday': self.weekday,
             'interval': self.interval,
             'image_link': urljoin(BASE_URL, self.image_link),
-            'next_dates': [date.to_dict() for date in self.next_dates]}
+            'next_dates': [date.to_json() for date in self.next_dates]}
 
 
 class PickupDate(namedtuple('PickupDate', ('date', 'weekday', 'exceptional'))):
@@ -188,7 +188,7 @@ class PickupDate(namedtuple('PickupDate', ('date', 'weekday', 'exceptional'))):
         date = datetime.strptime(date, '%d.%m.%Y').date()
         return cls(date, weekday, exceptional)
 
-    def to_dict(self):
+    def to_json(self):
         """Returns a JSON-ish dictionary."""
         return {
             'date': self.date.isoformat(),
@@ -227,7 +227,7 @@ class Location(namedtuple('Location', 'code street house_number district')):
         """Returns street and house number."""
         return '{} {}'.format(self.street, self.house_number or 'N/A')
 
-    def to_dict(self):
+    def to_json(self):
         """Returns a JSON-ish dictionary."""
         return {
             'code': self.code,
@@ -243,12 +243,12 @@ class PickupSolution(namedtuple('PickupSolution', ('location', 'pickups'))):
 
     def __str__(self):
         """Returns the respective JSON data."""
-        return dumps(self.to_dict(), indent=2)
+        return dumps(self.to_json(), indent=2)
 
-    def to_dict(self):
+    def to_json(self):
         """Returns a JSON-ish list."""
-        dictionary = self.location.to_dict()
-        dictionary['pickups'] = [pickup.to_dict() for pickup in self.pickups]
+        dictionary = self.location.to_json()
+        dictionary['pickups'] = [pickup.to_json() for pickup in self.pickups]
         return dictionary
 
 
