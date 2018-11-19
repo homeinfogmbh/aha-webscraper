@@ -182,16 +182,23 @@ class PickupDate(namedtuple('PickupDate', ('date', 'weekday', 'exceptional'))):
     @classmethod
     def from_string(cls, string):
         """Creates a new pickup date from the provided string."""
-        weekday, date = string.split(', ')
-        exceptional = date.endswith('*')
-        date = date.strip('*').strip()
-        date = datetime.strptime(date, '%d.%m.%Y').date()
+        try:
+            weekday, date = string.split(', ')
+        except ValueError:
+            date = None
+            weekday = None
+            exceptional = string == '*'
+        else:
+            exceptional = date.endswith('*')
+            date = date.strip('*').strip()
+            date = datetime.strptime(date, '%d.%m.%Y').date()
+
         return cls(date, weekday, exceptional)
 
     def to_json(self):
         """Returns a JSON-ish dictionary."""
         return {
-            'date': self.date.isoformat(),
+            'date': None if self.date is None else self.date.isoformat(),
             'weekday': self.weekday,
             'exceptional': self.exceptional}
 
