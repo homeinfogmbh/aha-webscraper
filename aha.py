@@ -3,6 +3,7 @@
 from collections import namedtuple
 from contextlib import suppress
 from datetime import datetime
+from functools import lru_cache
 from json import dumps
 from re import IGNORECASE, compile as compile_
 from urllib.parse import urljoin
@@ -56,6 +57,7 @@ class LoadingLocations(Exception):
             yield location
 
 
+@lru_cache()
 def street_regex(street):
     """Returns a regular expression to match the street name."""
 
@@ -67,6 +69,7 @@ def street_regex(street):
     return compile_(street.replace('.', '.*'), flags=IGNORECASE)
 
 
+@lru_cache()
 def normalize_houseno(house_number):
     """Tries to remove leading zeros from the house number."""
 
