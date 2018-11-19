@@ -159,10 +159,14 @@ class Pickup(namedtuple(
         typ = typ.get_text().strip()
         weekday = weekday.get_text().strip()
         interval = interval.get_text().strip()
-        next_dates = [
-            PickupDate.from_string(next_date) for next_date
-            in html_content(next_dates.contents)]
-        return cls(typ, weekday, interval, image_link, next_dates)
+        next_pickups = []
+
+        for next_date in html_content(next_dates.contents):
+            with suppress(ValueError):
+                pickup_date = PickupDate.from_string(next_date)
+                next_pickups.append(pickup_date)
+
+        return cls(typ, weekday, interval, image_link, tuple(next_pickups))
 
     def to_json(self):
         """Returns a JSON-ish dictionary."""
@@ -182,23 +186,16 @@ class PickupDate(namedtuple('PickupDate', ('date', 'weekday', 'exceptional'))):
     @classmethod
     def from_string(cls, string):
         """Creates a new pickup date from the provided string."""
-        try:
-            weekday, date = string.split(', ')
-        except ValueError:
-            date = None
-            weekday = None
-            exceptional = string == '*'
-        else:
-            exceptional = date.endswith('*')
-            date = date.strip('*').strip()
-            date = datetime.strptime(date, '%d.%m.%Y').date()
-
+        weekday, date = string.split(', ')
+        exceptional = date.endswith('*')
+        date = date.strip('*').strip()
+        date = datetime.strptime(date, '%d.%m.%Y').date()
         return cls(date, weekday, exceptional)
 
     def to_json(self):
         """Returns a JSON-ish dictionary."""
         return {
-            'date': None if self.date is None else self.date.isoformat(),
+            'date': self.date.isoformat(),
             'weekday': self.weekday,
             'exceptional': self.exceptional}
 
