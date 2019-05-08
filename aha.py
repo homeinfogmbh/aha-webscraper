@@ -1,12 +1,12 @@
 """AHA garbage collection dates web scraper."""
 
-from collections import namedtuple
 from contextlib import suppress
 from datetime import datetime
 from functools import lru_cache
 from json import dumps
-from re import IGNORECASE, compile as compile_
+from re import IGNORECASE, compile  # pylint: disable=W0622
 from urllib.parse import urljoin
+from typing import List, NamedTuple
 
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Comment
@@ -30,8 +30,6 @@ STREET_MAP = {
 
 class NotAPickup(Exception):
     """Indicates that the respective row is not a Pickup."""
-
-    pass
 
 
 class LocationNotFound(Exception):
@@ -66,7 +64,7 @@ def street_regex(street):
             street = street.replace(key, value)
             break
 
-    return compile_(street.replace('.', '.*'), flags=IGNORECASE)
+    return compile(street.replace('.', '.*'), flags=IGNORECASE)
 
 
 @lru_cache()
@@ -144,11 +142,38 @@ def by_loading_location(loading_location, pickup_location):
                 yield pickup
 
 
-class Pickup(namedtuple(
-        'Pickup', 'type weekday interval image_link next_dates')):
+class PickupDate(NamedTuple):
+    """A pickup date."""
+
+    date: datetime
+    weekday: str
+    exceptional: bool
+
+    @classmethod
+    def from_string(cls, string):
+        """Creates a new pickup date from the provided string."""
+        weekday, date = string.split(', ')
+        exceptional = date.endswith('*')
+        date = date.strip('*').strip()
+        date = datetime.strptime(date, '%d.%m.%Y').date()
+        return cls(date, weekday, exceptional)
+
+    def to_json(self):
+        """Returns a JSON-ish dictionary."""
+        return {
+            'date': self.date.isoformat(),
+            'weekday': self.weekday,
+            'exceptional': self.exceptional}
+
+
+class Pickup(NamedTuple):
     """Garbage pickup."""
 
-    __slots__ = ()
+    type: str
+    weekday: str
+    interval: str
+    image_link: str
+    next_dates: List[PickupDate]
 
     @classmethod
     def from_html(cls, row):
@@ -181,32 +206,13 @@ class Pickup(namedtuple(
             'next_dates': [date.to_json() for date in self.next_dates]}
 
 
-class PickupDate(namedtuple('PickupDate', ('date', 'weekday', 'exceptional'))):
-    """A pickup date."""
-
-    __slots__ = ()
-
-    @classmethod
-    def from_string(cls, string):
-        """Creates a new pickup date from the provided string."""
-        weekday, date = string.split(', ')
-        exceptional = date.endswith('*')
-        date = date.strip('*').strip()
-        date = datetime.strptime(date, '%d.%m.%Y').date()
-        return cls(date, weekday, exceptional)
-
-    def to_json(self):
-        """Returns a JSON-ish dictionary."""
-        return {
-            'date': self.date.isoformat(),
-            'weekday': self.weekday,
-            'exceptional': self.exceptional}
-
-
-class Location(namedtuple('Location', 'code street house_number district')):
+class Location(NamedTuple):
     """Basic location."""
 
-    __slots__ = ()
+    code: str
+    street: str
+    house_number: str
+    district: str
 
     def __str__(self):
         """Returns the AHA string representation."""
@@ -243,10 +249,11 @@ class Location(namedtuple('Location', 'code street house_number district')):
             'district': self.district}
 
 
-class PickupSolution(namedtuple('PickupSolution', ('location', 'pickups'))):
+class PickupSolution(NamedTuple):
     """A series of loading information."""
 
-    __slots__ = ()
+    location: Location
+    pickups: List[Pickup]
 
     def __str__(self):
         """Returns the respective JSON data."""
