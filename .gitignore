@@ -2,3 +2,4 @@
 build/*
 .installed_files.txt
 .buildconfig
+*~
