@@ -1,7 +1,7 @@
 """AHA garbage collection dates web scraper."""
 
 from contextlib import suppress
-from datetime import datetime
+from datetime import date, datetime
 from functools import lru_cache
 from json import dumps
 from re import IGNORECASE, compile  # pylint: disable=W0622
@@ -25,7 +25,8 @@ STREET_MAP = {
     'strasse': 'str.',
     'straße': 'str',
     'Strasse': 'Str.',
-    'Straße': 'Str.'}
+    'Straße': 'Str.'
+}
 
 
 class NotAPickup(Exception):
@@ -108,9 +109,7 @@ def get_loading_locations(html):
 def by_pickup_location(pickup_location, house_number):
     """Returns the respective pickups by a pickup location."""
 
-    params = {
-        'strasse': str(pickup_location),
-        'hausnr': house_number}
+    params = {'strasse': str(pickup_location), 'hausnr': house_number}
     reply = get(URL, params=params)
 
     if reply.status_code == 200:
@@ -130,7 +129,8 @@ def by_loading_location(loading_location, pickup_location):
     params = {
         'strasse': str(pickup_location),
         'hausnr': pickup_location.house_number,
-        'ladeort': loading_location.code}
+        'ladeort': loading_location.code
+    }
     reply = get(URL, params=params)
 
     if reply.status_code == 200:
@@ -145,14 +145,14 @@ def by_loading_location(loading_location, pickup_location):
 class PickupDate(NamedTuple):
     """A pickup date."""
 
-    date: datetime
+    date: date
     weekday: str
     exceptional: bool
 
     @classmethod
     def from_string(cls, string):
         """Creates a new pickup date from the provided string."""
-        weekday, date = string.split(', ')
+        weekday, date = string.split(', ')  # pylint: disable=W0621
         exceptional = date.endswith('*')
         date = date.strip('*').strip()
         date = datetime.strptime(date, '%d.%m.%Y').date()
