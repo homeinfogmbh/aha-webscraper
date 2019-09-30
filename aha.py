@@ -163,7 +163,8 @@ class PickupDate(NamedTuple):
         return {
             'date': self.date.isoformat(),
             'weekday': self.weekday,
-            'exceptional': self.exceptional}
+            'exceptional': self.exceptional
+        }
 
 
 class Pickup(NamedTuple):
@@ -203,7 +204,8 @@ class Pickup(NamedTuple):
             'weekday': self.weekday,
             'interval': self.interval,
             'image_link': urljoin(BASE_URL, self.image_link),
-            'next_dates': [date.to_json() for date in self.next_dates]}
+            'next_dates': [date.to_json() for date in self.next_dates]
+        }
 
 
 class Location(NamedTuple):
@@ -246,7 +248,8 @@ class Location(NamedTuple):
             'code': self.code,
             'street': self.street,
             'house_number': self.house_number,
-            'district': self.district}
+            'district': self.district
+        }
 
 
 class PickupSolution(NamedTuple):
