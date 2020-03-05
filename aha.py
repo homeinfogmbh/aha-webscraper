@@ -334,7 +334,7 @@ def get_args():
     parser = ArgumentParser(description='Web scrape AHA pickup locations.')
     parser.add_argument('street')
     parser.add_argument('houseno')
-    parser.add_argument('-d', '--district', default='Hannover')
+    parser.add_argument('-d', '--district', default=DEFAULT_DISTRICT)
     return parser.parse_args()
 
 
