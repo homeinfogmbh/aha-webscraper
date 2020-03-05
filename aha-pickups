@@ -1,31 +1,8 @@
 #! /usr/bin/env python3
-"""aha.py
+"""Web-scrape AHA pickup locations."""
 
-Web scrape AHA pickup locations.
-
-Usage:
-    aha.py <street> <house_number> [options]
-
-Options:
-    --district=<district>, -d   Sepcifies the district [default: Hannover].
-    --help, -h                  Print this.page.
-"""
-from docopt import docopt
-
-from aha import AhaDisposalClient
-
-
-def main(options):
-    """Runs the web scraper."""
-
-    street = options['<street>']
-    house_number = options['<house_number>']
-    district = options['--district']
-    client = AhaDisposalClient(district=district)
-
-    for pickup_solution in client.by_street_houseno(street, house_number):
-        print(pickup_solution)
+from aha import main
 
 
 if __name__ == '__main__':
-    main(docopt(__doc__))
+    main()

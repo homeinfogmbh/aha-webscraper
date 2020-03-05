@@ -1,5 +1,6 @@
 """AHA garbage collection dates web scraper."""
 
+from argparse import ArgumentParser
 from contextlib import suppress
 from datetime import date, datetime
 from functools import lru_cache
@@ -13,7 +14,7 @@ from bs4.element import NavigableString, Comment
 from requests import get
 
 
-__all__ = ['LocationNotFound', 'AhaDisposalClient']
+__all__ = ['LocationNotFound', 'AhaDisposalClient', 'main']
 
 
 BASE_URL = 'https://www.aha-region.de/'
@@ -54,92 +55,6 @@ class LoadingLocations(Exception):
     def __iter__(self):
         for location in self.locations:
             yield location
-
-
-@lru_cache()
-def street_regex(street):
-    """Returns a regular expression to match the street name."""
-
-    for key, value in STREET_MAP.items():
-        if street.endswith(key):
-            street = street.replace(key, value)
-            break
-
-    return compile(street.replace('.', '.*'), flags=IGNORECASE)
-
-
-@lru_cache()
-def normalize_houseno(house_number):
-    """Tries to remove leading zeros from the house number."""
-
-    return house_number.strip().lstrip('0')
-
-
-def html_content(items):
-    """Yields HTML like content."""
-
-    for item in items:
-        if isinstance(item, NavigableString) and not isinstance(item, Comment):
-            yield item
-
-
-def parse_pickups(table):
-    """Parses pickups from the provided table."""
-
-    tbody = table.find('tbody')
-
-    if tbody is not None:
-        rows = tbody.find_all('tr')
-
-        for row in rows[1:-1]:    # Skip table header and footer.
-            with suppress(NotAPickup):
-                yield Pickup.from_html(row)
-
-
-def get_loading_locations(html):
-    """Yieds loading location from the respective select element."""
-
-    select = html.find(id='ladeort')
-
-    if select is not None:
-        for option in select.find_all('option'):
-            yield Location.from_html(option)
-
-
-def by_pickup_location(pickup_location, house_number):
-    """Returns the respective pickups by a pickup location."""
-
-    params = {'strasse': str(pickup_location), 'hausnr': house_number}
-    reply = get(URL, params=params)
-
-    if reply.status_code == 200:
-        html = BeautifulSoup(reply.text, 'html5lib')
-        table = html.find('table')
-
-        if table is None:
-            raise LoadingLocations(tuple(get_loading_locations(html)))
-
-        for pickup in parse_pickups(table):
-            yield pickup
-
-
-def by_loading_location(loading_location, pickup_location):
-    """Returns the respective pickups by a loading location."""
-
-    params = {
-        'strasse': str(pickup_location),
-        'hausnr': pickup_location.house_number,
-        'ladeort': loading_location.code
-    }
-    reply = get(URL, params=params)
-
-    if reply.status_code == 200:
-        html = BeautifulSoup(reply.text, 'html5lib')
-        table = html.find('table')
-
-        if table is not None:
-            for pickup in parse_pickups(table):
-                yield pickup
 
 
 class PickupDate(NamedTuple):
@@ -325,3 +240,109 @@ class AhaDisposalClient:
     def by_address(self, address):
         """Yields the respective pickups by the respective address."""
         return self.by_street_houseno(address.street, address.house_number)
+
+
+@lru_cache()
+def street_regex(street):
+    """Returns a regular expression to match the street name."""
+
+    for key, value in STREET_MAP.items():
+        if street.endswith(key):
+            street = street.replace(key, value)
+            break
+
+    return compile(street.replace('.', '.*'), flags=IGNORECASE)
+
+
+@lru_cache()
+def normalize_houseno(house_number):
+    """Tries to remove leading zeros from the house number."""
+
+    return house_number.strip().lstrip('0')
+
+
+def html_content(items):
+    """Yields HTML like content."""
+
+    for item in items:
+        if isinstance(item, NavigableString) and not isinstance(item, Comment):
+            yield item
+
+
+def parse_pickups(table):
+    """Parses pickups from the provided table."""
+
+    tbody = table.find('tbody')
+
+    if tbody is not None:
+        rows = tbody.find_all('tr')
+
+        for row in rows[1:-1]:    # Skip table header and footer.
+            with suppress(NotAPickup):
+                yield Pickup.from_html(row)
+
+
+def get_loading_locations(html):
+    """Yieds loading location from the respective select element."""
+
+    select = html.find(id='ladeort')
+
+    if select is not None:
+        for option in select.find_all('option'):
+            yield Location.from_html(option)
+
+
+def by_pickup_location(pickup_location, house_number):
+    """Returns the respective pickups by a pickup location."""
+
+    params = {'strasse': str(pickup_location), 'hausnr': house_number}
+    reply = get(URL, params=params)
+
+    if reply.status_code == 200:
+        html = BeautifulSoup(reply.text, 'html5lib')
+        table = html.find('table')
+
+        if table is None:
+            raise LoadingLocations(tuple(get_loading_locations(html)))
+
+        for pickup in parse_pickups(table):
+            yield pickup
+
+
+def by_loading_location(loading_location, pickup_location):
+    """Returns the respective pickups by a loading location."""
+
+    params = {
+        'strasse': str(pickup_location),
+        'hausnr': pickup_location.house_number,
+        'ladeort': loading_location.code
+    }
+    reply = get(URL, params=params)
+
+    if reply.status_code == 200:
+        html = BeautifulSoup(reply.text, 'html5lib')
+        table = html.find('table')
+
+        if table is not None:
+            for pickup in parse_pickups(table):
+                yield pickup
+
+
+def get_args():
+    """Parses the command line arguments."""
+
+    parser = ArgumentParser(description='Web scrape AHA pickup locations.')
+    parser.add_argument('street')
+    parser.add_argument('houseno')
+    parser.add_argument('-d', '--district', default='Hannover')
+    return parser.parse_args()
+
+
+def main():
+    """Runs the web scraper."""
+
+    args = get_args()
+    client = AhaDisposalClient(district=args.district)
+
+    for pickup_solution in client.by_street_houseno(args.street, args.houseno):
+        print(pickup_solution)

@@ -9,5 +9,6 @@ setup(
     author='HOMEINFO - Digitale Informationssysteme GmbH',
     requires=['requests', 'bs4', 'html5lib'],
     py_modules=['aha'],
+    scripts=['aha-pickups'],
     description=(
         'AHA Region Hannover garbage collection dates web scraping API.'))
