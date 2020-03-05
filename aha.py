@@ -110,7 +110,7 @@ class Pickup(NamedTuple):
                 pickup_date = PickupDate.from_string(next_date)
                 next_pickups.append(pickup_date)
 
-        return cls(typ, weekday, interval, image_link, tuple(next_pickups))
+        return cls(typ, weekday, interval, image_link, next_pickups)
 
     def to_json(self):
         """Returns a JSON-ish dictionary."""
@@ -206,11 +206,9 @@ class AhaDisposalClient:
 
     def _get_pickup_locations(self, street, house_number=None):
         """Gets a location by the respective street name."""
-        street = street_regex(street)
-
         for pickup_location in self._pickup_locations(
                 house_number=house_number):
-            if street.match(pickup_location.street):
+            if street_regex(street).match(pickup_location.street):
                 yield pickup_location
 
     def _get_pickup_location(self, street, house_number=None):
