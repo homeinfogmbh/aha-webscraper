@@ -1,20 +1,24 @@
 """AHA garbage collection dates web scraper."""
 
-from argparse import ArgumentParser
+from __future__ import annotations
+from argparse import ArgumentParser, Namespace
 from contextlib import suppress
 from datetime import date, datetime
 from functools import lru_cache
 from json import dumps
-from re import IGNORECASE, compile  # pylint: disable=W0622
+from re import IGNORECASE, Pattern, compile     # pylint: disable=W0622
 from urllib.parse import urljoin
-from typing import List, NamedTuple
+from typing import Generator, Iterable, List, NamedTuple
+from xml.etree.ElementTree import Element
 
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Comment
 from requests import get
 
+from mdb import Address
 
-__all__ = ['LocationNotFound', 'AhaDisposalClient', 'main']
+
+__all__ = ['LocationNotFound', 'AhaDisposalClient', 'PickupSolution', 'main']
 
 
 BASE_URL = 'https://www.aha-region.de/'
@@ -37,7 +41,7 @@ class NotAPickup(Exception):
 class LocationNotFound(Exception):
     """Indicates that the respective location could not be found."""
 
-    def __init__(self, street):
+    def __init__(self, street: str):
         """Sets the street."""
         super().__init__(street)
         self.street = street
@@ -65,7 +69,7 @@ class PickupDate(NamedTuple):
     exceptional: bool
 
     @classmethod
-    def from_string(cls, string):
+    def from_string(cls, string: str) -> PickupDate:
         """Creates a new pickup date from the provided string."""
         weekday, date = string.split(', ')  # pylint: disable=W0621
         exceptional = date.endswith('*')
@@ -73,7 +77,7 @@ class PickupDate(NamedTuple):
         date = datetime.strptime(date, '%d.%m.%Y').date()
         return cls(date, weekday, exceptional)
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """Returns a JSON-ish dictionary."""
         return {
             'date': self.date.isoformat(),
@@ -92,12 +96,12 @@ class Pickup(NamedTuple):
     next_dates: List[PickupDate]
 
     @classmethod
-    def from_html(cls, row):
+    def from_html(cls, row: Element) -> Pickup:
         """Creates pickup information from an HTML <td> row."""
         try:
             image_link, typ, weekday, next_dates, interval = row.find_all('td')
         except ValueError:
-            raise NotAPickup(row)
+            raise NotAPickup(row) from None
 
         image_link = image_link.find('img')['src']
         typ = typ.get_text().strip()
@@ -112,7 +116,7 @@ class Pickup(NamedTuple):
 
         return cls(typ, weekday, interval, image_link, next_pickups)
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """Returns a JSON-ish dictionary."""
         return {
             'type': self.type,
@@ -136,13 +140,13 @@ class Location(NamedTuple):
         return '@'.join((self.code, self.street, self.district))
 
     @classmethod
-    def from_string(cls, string, house_number=None):
+    def from_string(cls, string: str, house_number: str = None) -> Location:
         """Creates a pickup location from the provided string."""
         code, street, district = string.split('@')
         return cls(code, street, house_number, district)
 
     @classmethod
-    def from_html(cls, option):
+    def from_html(cls, option: Element) -> Location:
         """Creates a loading location from HTML."""
         code = option['value']   # Code must not be stripped.
         content = option.get_text().strip()
@@ -153,11 +157,11 @@ class Location(NamedTuple):
         return cls(code, street, house_number, district)
 
     @property
-    def address(self):
+    def address(self) -> str:
         """Returns street and house number."""
-        return '{} {}'.format(self.street, self.house_number or 'N/A')
+        return f'{self.street} {self.house_number}'
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """Returns a JSON-ish dictionary."""
         return {
             'code': self.code,
@@ -177,11 +181,11 @@ class PickupSolution(NamedTuple):
         """Returns the respective JSON data."""
         return dumps(self.to_json(), indent=2)
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """Returns a JSON-ish list."""
-        dictionary = self.location.to_json()
-        dictionary['pickups'] = [pickup.to_json() for pickup in self.pickups]
-        return dictionary
+        json = self.location.to_json()
+        json['pickups'] = [pickup.to_json() for pickup in self.pickups]
+        return json
 
 
 class AhaDisposalClient:
@@ -191,7 +195,8 @@ class AhaDisposalClient:
         """Sets URL and district."""
         self.district = district
 
-    def _pickup_locations(self, house_number=None):
+    def _pickup_locations(self, house_number: str = None) -> Generator[
+            Location, None, None]:
         """Yields the respective pickup addresses."""
         params = {'von': 'A', 'bis': '[', 'gemeinde': self.district}
         reply = get(URL, params=params)
@@ -204,14 +209,16 @@ class AhaDisposalClient:
                 yield Location.from_string(
                     str(option['value']), house_number=house_number)
 
-    def _get_pickup_locations(self, street, house_number=None):
+    def _get_pickup_locations(self, street: str, house_number: str = None) \
+            -> Generator[Location, None, None]:
         """Gets a location by the respective street name."""
         for pickup_location in self._pickup_locations(
                 house_number=house_number):
             if street_regex(street).match(pickup_location.street):
                 yield pickup_location
 
-    def _get_pickup_location(self, street, house_number=None):
+    def _get_pickup_location(self, street: str, house_number: str = None) \
+            -> Location:
         """Gets a location by the respective street name."""
         for pickup_location in self._get_pickup_locations(
                 street, house_number=house_number):
@@ -219,7 +226,8 @@ class AhaDisposalClient:
 
         raise LocationNotFound(street)
 
-    def by_street_houseno(self, street, house_number):
+    def by_street_houseno(self, street: str, house_number: str) \
+            -> Generator[PickupSolution, None, None]:
         """Yields pickup solutions by the respective address."""
         house_number = normalize_houseno(house_number)
         pickup_location = self._get_pickup_location(
@@ -235,13 +243,14 @@ class AhaDisposalClient:
         else:
             yield PickupSolution(pickup_location, pickups)
 
-    def by_address(self, address):
+    def by_address(self, address: Address) \
+            -> Generator[PickupSolution, None, None]:
         """Yields the respective pickups by the respective address."""
         return self.by_street_houseno(address.street, address.house_number)
 
 
 @lru_cache()
-def street_regex(street):
+def street_regex(street: str) -> Pattern:
     """Returns a regular expression to match the street name."""
 
     for key, value in STREET_MAP.items():
@@ -253,13 +262,13 @@ def street_regex(street):
 
 
 @lru_cache()
-def normalize_houseno(house_number):
+def normalize_houseno(house_number: str) -> str:
     """Tries to remove leading zeros from the house number."""
 
     return house_number.strip().lstrip('0')
 
 
-def html_content(items):
+def html_content(items: Iterable[Element]) -> Generator[Element, None, None]:
     """Yields HTML like content."""
 
     for item in items:
@@ -267,7 +276,7 @@ def html_content(items):
             yield item
 
 
-def parse_pickups(table):
+def parse_pickups(table: Element) -> Generator[Pickup, None, None]:
     """Parses pickups from the provided table."""
 
     tbody = table.find('tbody')
@@ -280,7 +289,7 @@ def parse_pickups(table):
                 yield Pickup.from_html(row)
 
 
-def get_loading_locations(html):
+def get_loading_locations(html: Element) -> Generator[Location, None, None]:
     """Yieds loading location from the respective select element."""
 
     select = html.find(id='ladeort')
@@ -290,7 +299,7 @@ def get_loading_locations(html):
             yield Location.from_html(option)
 
 
-def by_pickup_location(pickup_location, house_number):
+def by_pickup_location(pickup_location: str, house_number: str):
     """Returns the respective pickups by a pickup location."""
 
     params = {'strasse': str(pickup_location), 'hausnr': house_number}
@@ -307,7 +316,8 @@ def by_pickup_location(pickup_location, house_number):
             yield pickup
 
 
-def by_loading_location(loading_location, pickup_location):
+def by_loading_location(loading_location, pickup_location) \
+        -> Generator[Pickup, None, None]:
     """Returns the respective pickups by a loading location."""
 
     params = {
@@ -326,7 +336,7 @@ def by_loading_location(loading_location, pickup_location):
                 yield pickup
 
 
-def get_args():
+def get_args() -> Namespace:
     """Parses the command line arguments."""
 
     parser = ArgumentParser(description='Web scrape AHA pickup locations.')
