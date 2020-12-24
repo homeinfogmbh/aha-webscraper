@@ -8,7 +8,7 @@ from functools import lru_cache
 from json import dumps
 from re import IGNORECASE, Pattern, compile     # pylint: disable=W0622
 from urllib.parse import urljoin
-from typing import Generator, Iterable, List, NamedTuple
+from typing import Iterable, Iterator, List, NamedTuple
 from xml.etree.ElementTree import Element
 
 from bs4 import BeautifulSoup
@@ -195,8 +195,8 @@ class AhaDisposalClient:
         """Sets URL and district."""
         self.district = district
 
-    def _pickup_locations(self, house_number: str = None) -> Generator[
-            Location, None, None]:
+    def _pickup_locations(self, house_number: str = None) \
+            -> Iterator[Location]:
         """Yields the respective pickup addresses."""
         params = {'von': 'A', 'bis': '[', 'gemeinde': self.district}
         reply = get(URL, params=params)
@@ -210,7 +210,7 @@ class AhaDisposalClient:
                     str(option['value']), house_number=house_number)
 
     def _get_pickup_locations(self, street: str, house_number: str = None) \
-            -> Generator[Location, None, None]:
+            -> Iterator[Location]:
         """Gets a location by the respective street name."""
         for pickup_location in self._pickup_locations(
                 house_number=house_number):
@@ -227,7 +227,7 @@ class AhaDisposalClient:
         raise LocationNotFound(street)
 
     def by_street_houseno(self, street: str, house_number: str) \
-            -> Generator[PickupSolution, None, None]:
+            -> Iterator[PickupSolution]:
         """Yields pickup solutions by the respective address."""
         house_number = normalize_houseno(house_number)
         pickup_location = self._get_pickup_location(
@@ -243,8 +243,7 @@ class AhaDisposalClient:
         else:
             yield PickupSolution(pickup_location, pickups)
 
-    def by_address(self, address: Address) \
-            -> Generator[PickupSolution, None, None]:
+    def by_address(self, address: Address) -> Iterator[PickupSolution]:
         """Yields the respective pickups by the respective address."""
         return self.by_street_houseno(address.street, address.house_number)
 
@@ -268,7 +267,7 @@ def normalize_houseno(house_number: str) -> str:
     return house_number.strip().lstrip('0')
 
 
-def html_content(items: Iterable[Element]) -> Generator[Element, None, None]:
+def html_content(items: Iterable[Element]) -> Iterator[Element]:
     """Yields HTML like content."""
 
     for item in items:
@@ -276,7 +275,7 @@ def html_content(items: Iterable[Element]) -> Generator[Element, None, None]:
             yield item
 
 
-def parse_pickups(table: Element) -> Generator[Pickup, None, None]:
+def parse_pickups(table: Element) -> Iterator[Pickup]:
     """Parses pickups from the provided table."""
 
     tbody = table.find('tbody')
@@ -289,7 +288,7 @@ def parse_pickups(table: Element) -> Generator[Pickup, None, None]:
                 yield Pickup.from_html(row)
 
 
-def get_loading_locations(html: Element) -> Generator[Location, None, None]:
+def get_loading_locations(html: Element) -> Iterator[Location]:
     """Yieds loading location from the respective select element."""
 
     select = html.find(id='ladeort')
@@ -316,8 +315,8 @@ def by_pickup_location(pickup_location: str, house_number: str):
             yield pickup
 
 
-def by_loading_location(loading_location, pickup_location) \
-        -> Generator[Pickup, None, None]:
+def by_loading_location(loading_location: Location,
+                        pickup_location: Location) -> Iterator[Pickup]:
     """Returns the respective pickups by a loading location."""
 
     params = {
