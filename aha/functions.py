@@ -7,7 +7,7 @@ __all__ = ['frames']
 
 
 def frames(iterable: Iterable[Any], size: int) -> Iterator[tuple[Any, Any]]:
-    """Yields pairwise items."""
+    """Yields tuples of the given size from the iterable."""
 
     if size < 1:
         raise ValueError('Size must be >= 1')
