@@ -1,4 +1,4 @@
-"""Parsing functions."""
+"""Web scraping API."""
 
 from functools import cache
 from typing import Iterator, Optional, Union
