@@ -1,7 +1,7 @@
 """Common exceptions."""
 
 from __future__ import annotations
-from typing import Iterable, Iterator
+from typing import Iterator
 
 from requests import Response
 
@@ -19,7 +19,7 @@ __all__ = [
 class AmbiguousLocations(Exception):
     """Indicates an ambiguous locations match."""
 
-    def __init__(self, locations: Iterable[Location]):
+    def __init__(self, *locations: Location):
         super().__init__(locations)
         self.locations = locations
 

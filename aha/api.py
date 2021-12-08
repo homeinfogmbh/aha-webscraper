@@ -49,19 +49,19 @@ def get_locations() -> frozenset[Location]:
 def find_location(name: str, *, district: Optional[str] = None) -> Location:
     """Yields locations."""
 
-    locations = sorted(
-        location for location in get_locations()
-        if street_regex(name).fullmatch(location.name)
-        and (district is None or location.district == district)
-    )
+    try:
+        location, *superfluous = sorted(
+            location for location in get_locations()
+            if street_regex(name).fullmatch(location.name)
+            and (district is None or location.district == district)
+        )
+    except ValueError:
+        raise NoLocationFound(name) from None
 
-    if not locations:
-        raise NoLocationFound(name)
+    if superfluous:
+        raise AmbiguousLocations(location, *superfluous)
 
-    if len(locations) == 1:
-        return locations[0]
-
-    raise AmbiguousLocations(locations)
+    return location
 
 
 def get_pickups(location: Location, house_number: Union[HouseNumber, str], *,
