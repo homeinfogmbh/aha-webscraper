@@ -7,6 +7,7 @@ from datetime import date, datetime
 from functools import lru_cache
 from json import dumps
 from re import IGNORECASE, Pattern, compile     # pylint: disable=W0622
+from string import ascii_letters
 from urllib.parse import urljoin
 from typing import Iterable, Iterator, List, NamedTuple
 from xml.etree.ElementTree import Element
@@ -59,6 +60,42 @@ class LoadingLocations(Exception):
     def __iter__(self):
         for location in self.locations:
             yield location
+
+
+class Request(NamedTuple):
+    """Pickups request."""
+
+    district: str
+    street: str
+    house_number: str
+    loading_location: str
+
+    def split_houseno(self) -> tuple[str, str]:
+        """Splits the house number."""
+        house_number = ''
+        house_number_addon = ''
+
+        for char in self.house_number:
+            if char.isdigit():
+                house_number += char
+            elif char in ascii_letters:
+                house_number_addon += char
+
+        return (house_number, house_number_addon)
+
+    def to_json(self) -> dict:
+        """Returns a JSON-ish dict."""
+        house_number, house_number_addon = self.split_houseno()
+
+        return {
+            'gemeinde': self.district,
+            'jsaus': '',    # TODO: What is this?
+            'strasse': self.street,
+            'hausnr': house_number,
+            'hausnraddon': house_number_addon,
+            'ladeort': self.loading_location,
+            'anzeigen': 'Suchen'
+        }
 
 
 class PickupDate(NamedTuple):
