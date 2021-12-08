@@ -83,23 +83,6 @@ def get_pickup_locations(document: BeautifulSoup) -> Iterator[str]:
         yield element['value']
 
 
-def parse_html(
-        html: str, *, pickup_location: Optional[str] = None
-        ) -> Iterator[Pickup]:
-    """Parses the HTML text."""
-
-    document = BeautifulSoup(html, 'html5lib')
-
-    try:
-        yield from parse_pickups(document, pickup_location=pickup_location)
-    except ScrapingError:
-        if not (pickup_locations := list(get_pickup_locations(document))):
-            raise
-
-    for pickup_location in pickup_locations:    # pylint: disable=R1704
-        yield from parse_pickups(document, pickup_location=pickup_location)
-
-
 def get_pickups(location: Location, house_number: Union[HouseNumber, str], *,
                 municipality: str = 'Hannover',
                 pickup_location: Optional[str] = None) -> Iterator[Pickup]:
@@ -113,4 +96,15 @@ def get_pickups(location: Location, house_number: Union[HouseNumber, str], *,
     if (response := post(URL, data=request.to_json())).status_code != 200:
         raise HTTPError.from_response(response)
 
-    return parse_html(response.text)
+    document = BeautifulSoup(response.text, 'html5lib')
+
+    try:
+        yield from parse_pickups(document, pickup_location=pickup_location)
+    except ScrapingError:
+        if not (pickup_locations := list(get_pickup_locations(document))):
+            raise
+
+        for pickup_location in pickup_locations:    # pylint: disable=R1704
+            yield from get_pickups(
+                location, house_number, municipality=municipality,
+                pickup_location=pickup_location)
