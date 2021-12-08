@@ -48,6 +48,7 @@ class NoLocationFound(Exception):
 class ScrapingError(Exception):
     """Indicates an error during scraping."""
 
-    def __init__(self, error_message: str, html: str):
-        super().__init__(error_message)
+    def __init__(self, message: str, html: str):
+        super().__init__(message)
+        self.message = message
         self.html = html

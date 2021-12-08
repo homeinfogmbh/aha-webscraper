@@ -5,7 +5,6 @@ from datetime import date
 from enum import Enum
 from string import ascii_letters
 from typing import NamedTuple, Optional
-from urllib.parse import quote_plus
 
 from bs4.element import Tag
 
@@ -84,19 +83,29 @@ class Pickup(NamedTuple):
         interval = Interval(interval.text)
         return cls(type_, image, weekday, dates, interval)
 
+    def to_json(self) -> dict:
+        """Returns a JSON-ish dict."""
+        return {
+            'type': self.type,
+            'image': self.image,
+            'weekday': self.weekday,
+            'dates': [d.isoformat() for d in self.dates],
+            'interval': self.interval.name
+        }
+
 
 class Request(NamedTuple):
     """Pickups request."""
 
     location: Location
     house_number: HouseNumber
+    municipality: str
     pickup_location: Optional[str] = None
-    district: str = 'Hannover'
 
     def to_json(self) -> dict:
         """Returns a JSON-ish dict."""
         return {
-            'gemeinde': self.district,
+            'gemeinde': self.municipality,
             'strasse': str(self.location),
             'hausnr': str(self.house_number.number),
             'hausnraddon': self.house_number.suffix,

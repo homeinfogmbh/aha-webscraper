@@ -1,8 +1,7 @@
 """Parsing functions."""
 
 from functools import cache
-from json import dumps
-from typing import Iterator, Optional
+from typing import Iterator, Optional, Union
 
 from bs4 import BeautifulSoup
 from requests import get, post
@@ -16,25 +15,18 @@ from aha.parsers import street_regex
 from aha.types import HouseNumber, Location, Pickup, Request
 
 
+__all__ = ['get_locations', 'find_location', 'get_pickups']
+
+
+PARAMS = {'von': 'A', 'bis': 'Z'}
 URL = 'https://www.aha-region.de/abholtermine/abfuhrkalender'
 Pickups = Iterator[Pickup]
-JSON = {
-	"gemeinde": "Hannover",
-	"jsaus": "",
-	"strasse": "00867@Fenskestr.@",
-	"hausnr": "25",
-	"hausnraddon": "",
-	"ladeort": "00867-0023+",
-	"anzeigen": "Suchen"
-}
 
 
 def _get_locations() -> Iterator[Location]:
     """Yields locations."""
 
-    params = {'von': 'A', 'bis': 'Z'}
-
-    if (response := get(URL, params=params)).status_code != 200:
+    if (response := get(URL, params=PARAMS)).status_code != 200:
         raise HTTPError.from_response(response)
 
     document = BeautifulSoup(response.text, 'html5lib')
@@ -72,11 +64,15 @@ def find_location(name: str, *, district: Optional[str] = None) -> Location:
     raise AmbiguousLocations(locations)
 
 
-def get_pickups(location: Location, house_number: HouseNumber, *,
+def get_pickups(location: Location, house_number: Union[HouseNumber, str], *,
+                municipality: str = 'Hannover',
                 pickup_location: Optional[str] = None) -> Pickups:
     """Returns pickups for the given location."""
 
-    request = Request(location, house_number, pickup_location)
+    if isinstance(house_number, str):
+        house_number = HouseNumber.from_string(house_number)
+
+    request = Request(location, house_number, municipality, pickup_location)
     data = request.to_json()
 
     if (response := post(URL, data=data)).status_code != 200:
@@ -89,37 +85,11 @@ def get_pickups(location: Location, house_number: HouseNumber, *,
             print(response.text)
             raise ScrapingError('Could not find table element', response.text)
 
-        for pickup_location in document.find(id='ladeort').find_all('option'):
+        for element in document.find(id='ladeort').find_all('option'):
             yield from get_pickups(location, house_number,
-                                   pickup_location=pickup_location['value'])
+                                   pickup_location=element['value'])
 
         return
 
     for _, caption, dates, _ in frames(table.find_all('tr')[1:], 4):
         yield Pickup.from_elements(caption, dates)
-
-
-def run() -> None:
-    """Runs the program."""
-
-    for location in sorted(get_locations()):
-        print(location)
-
-    print(find_location('Fenskestr.'))
-
-    try:
-        print(find_location('Wilhelm-Busch-Str.'))
-    except AmbiguousLocations as locations:
-        print('Ambiguos locations:')
-
-        for location in locations:
-            print(location)
-
-    print(location := find_location('Wilhelm-Busch-Str.',
-                                    district='Nordstadt'))
-    print(p1 := list(get_pickups(location, HouseNumber(2))))
-
-    print(location := find_location('Fenskestr.'))
-    print(p2 := list(get_pickups(location, HouseNumber(25))))
-
-    print(p1 == p2)

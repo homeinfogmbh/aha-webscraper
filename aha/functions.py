@@ -1,6 +1,5 @@
 """Miscellaneous functions."""
 
-from itertools import tee
 from typing import Any, Iterable, Iterator
 
 
