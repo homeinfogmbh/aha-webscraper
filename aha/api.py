@@ -92,4 +92,5 @@ def get_pickups(location: Location, house_number: Union[HouseNumber, str], *,
         return
 
     for _, caption, dates, _ in frames(table.find_all('tr')[1:], 4):
-        yield Pickup.from_elements(caption, dates)
+        yield Pickup.from_elements(caption, dates,
+                                   pickup_location=pickup_location)

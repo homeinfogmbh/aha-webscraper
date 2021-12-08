@@ -71,9 +71,11 @@ class Pickup(NamedTuple):
     weekday: str
     dates: list[date]
     interval: Interval
+    pickup_location: Optional[str] = None
 
     @classmethod
-    def from_elements(cls, caption: Tag, schedule: Tag) -> Pickup:
+    def from_elements(cls, caption: Tag, schedule: Tag, *,
+                      pickup_location: Optional[str] = None) -> Pickup:
         """Creates a pickup from an element pair."""
         type_ = caption.find('strong').text
         image = caption.find('img')['src']
@@ -81,7 +83,7 @@ class Pickup(NamedTuple):
         weekday = weekday.text
         dates = [parse_date(date) for date in text_content(dates)]
         interval = Interval(interval.text)
-        return cls(type_, image, weekday, dates, interval)
+        return cls(type_, image, weekday, dates, interval, pickup_location)
 
     def to_json(self) -> dict:
         """Returns a JSON-ish dict."""
@@ -90,7 +92,8 @@ class Pickup(NamedTuple):
             'image': self.image,
             'weekday': self.weekday,
             'dates': [d.isoformat() for d in self.dates],
-            'interval': self.interval.name
+            'interval': self.interval.name,
+            'pickup_location': self.pickup_location
         }
 
 
