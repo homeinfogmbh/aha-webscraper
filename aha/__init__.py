@@ -5,6 +5,7 @@ from aha.exceptions import AmbiguousLocations
 from aha.exceptions import HTTPError
 from aha.exceptions import NoLocationFound
 from aha.exceptions import ScrapingError
+from aha.types import HouseNumber, Interval, Location, Pickup
 
 
 __all__ = [
@@ -14,5 +15,9 @@ __all__ = [
     'ScrapingError',
     'get_locations',
     'find_location',
-    'get_pickups'
+    'get_pickups',
+    'HouseNumber',
+    'Interval',
+    'Location',
+    'Pickup'
 ]
