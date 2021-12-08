@@ -198,8 +198,7 @@ class AhaDisposalClient:
     def _pickup_locations(self, house_number: str = None) \
             -> Iterator[Location]:
         """Yields the respective pickup addresses."""
-        params = {'von': 'A', 'bis': '[', 'gemeinde': self.district}
-        reply = get(URL, params=params)
+        reply = get(URL, params={'gemeinde': self.district})
 
         if reply.status_code == 200:
             html = BeautifulSoup(reply.text, 'html5lib')
