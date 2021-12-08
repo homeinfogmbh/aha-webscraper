@@ -87,15 +87,17 @@ def _get_pickups(request: Request) -> Iterator[Pickup]:
     if (response := post(URL, data=request.to_json())).status_code != 200:
         raise HTTPError.from_response(response)
 
-    try:
-        return parse_pickups(html := BeautifulSoup(response.text, 'html5lib'))
-    except ScrapingError:
-        if not (pickup_locations := list(get_pickup_locations(html))):
-            raise
+    document = BeautifulSoup(response.text, 'html5lib')
 
-    for pickup_location in pickup_locations:    # pylint: disable=R1704
-        # Return first-best match.
-        return _get_pickups(request.change_location(pickup_location))
+    try:
+        yield from parse_pickups(document)
+    except ScrapingError as error:
+        try:
+            pickup_location, *_ = get_pickup_locations(document)
+        except ValueError:
+            raise error     # pylint: disable=W0707
+
+        yield from _get_pickups(request.change_location(pickup_location))
 
 
 def get_pickups(location: Location, house_number: Union[HouseNumber, str], *,
