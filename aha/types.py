@@ -105,6 +105,11 @@ class Request(NamedTuple):
     municipality: str
     pickup_location: Optional[str] = None
 
+    def change_location(self, pickup_location: str) -> Request:
+        """Returns a request with changed pickup location."""
+        return type(self)(self.location, self.house_number, self.municipality,
+                          pickup_location)
+
     def to_json(self) -> dict:
         """Returns a JSON-ish dict."""
         return {
