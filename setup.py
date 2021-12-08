@@ -17,7 +17,7 @@ setup(
     packages=['aha'],
     entry_points={
         'console_scripts': [
-            'aha-dates = aha.api:main'
+            'aha-dates = aha.cli:main'
         ]
     },
     license='GPLv3',
