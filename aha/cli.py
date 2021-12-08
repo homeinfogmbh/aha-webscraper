@@ -25,10 +25,12 @@ def get_args() -> Namespace:
     parser.add_argument('street', help='the street name')
     parser.add_argument('houseno', help='the house number')
     parser.add_argument('-d', '--district', help='the district name')
-    parser.add_argument('-m', '--municipality', default='Hannover',
-                        help='the district name')
     parser.add_argument('-i', '--indent', type=int,
                         help='indentation for JSON')
+    parser.add_argument('-m', '--municipality', default='Hannover',
+                        help='the district name')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='be gassy')
     return parser.parse_args()
 
 
@@ -36,7 +38,7 @@ def main() -> int:
     """Runs the program."""
 
     args = get_args()
-    basicConfig(format=LOG_FORMAT, level=DEBUG if args.debug else WARNING)
+    basicConfig(format=LOG_FORMAT, level=DEBUG if args.verbose else WARNING)
 
     try:
         location = find_location(args.street, district=args.district)
