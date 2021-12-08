@@ -9,7 +9,7 @@ from json import dumps
 from re import IGNORECASE, Pattern, compile     # pylint: disable=W0622
 from string import ascii_letters
 from urllib.parse import urljoin
-from typing import Iterable, Iterator, List, NamedTuple
+from typing import Iterable, Iterator, NamedTuple, Optional
 from xml.etree.ElementTree import Element
 
 from bs4 import BeautifulSoup
@@ -130,7 +130,7 @@ class Pickup(NamedTuple):
     weekday: str
     interval: str
     image_link: str
-    next_dates: List[PickupDate]
+    next_dates: list[PickupDate]
 
     @classmethod
     def from_html(cls, row: Element) -> Pickup:
@@ -212,7 +212,7 @@ class PickupSolution(NamedTuple):
     """A series of loading information."""
 
     location: Location
-    pickups: List[Pickup]
+    pickups: list[Pickup]
 
     def __str__(self):
         """Returns the respective JSON data."""
@@ -228,12 +228,12 @@ class PickupSolution(NamedTuple):
 class AhaDisposalClient:
     """Client to web-scrape the AHA garbage disposal dates API."""
 
-    def __init__(self, district=DEFAULT_DISTRICT):
+    def __init__(self, district: str = DEFAULT_DISTRICT):
         """Sets URL and district."""
         self.district = district
 
-    def _pickup_locations(self, house_number: str = None) \
-            -> Iterator[Location]:
+    def _pickup_locations(
+            self, house_number: Optional[str] = None) -> Iterator[Location]:
         """Yields the respective pickup addresses."""
         reply = get(URL, params={'gemeinde': self.district})
 
@@ -245,16 +245,18 @@ class AhaDisposalClient:
                 yield Location.from_string(
                     str(option['value']), house_number=house_number)
 
-    def _get_pickup_locations(self, street: str, house_number: str = None) \
-            -> Iterator[Location]:
+    def _get_pickup_locations(
+            self, street: str, house_number: Optional[str] = None
+            ) -> Iterator[Location]:
         """Gets a location by the respective street name."""
         for pickup_location in self._pickup_locations(
                 house_number=house_number):
             if street_regex(street).match(pickup_location.street):
                 yield pickup_location
 
-    def _get_pickup_location(self, street: str, house_number: str = None) \
-            -> Location:
+    def _get_pickup_location(
+            self, street: str, house_number: Optional[str] = None
+            ) -> Location:
         """Gets a location by the respective street name."""
         for pickup_location in self._get_pickup_locations(
                 street, house_number=house_number):
@@ -262,8 +264,8 @@ class AhaDisposalClient:
 
         raise LocationNotFound(street)
 
-    def by_street_houseno(self, street: str, house_number: str) \
-            -> Iterator[PickupSolution]:
+    def by_street_houseno(self, street: str, house_number: str
+                          ) -> Iterator[PickupSolution]:
         """Yields pickup solutions by the respective address."""
         house_number = normalize_houseno(house_number)
         pickup_location = self._get_pickup_location(
@@ -381,7 +383,7 @@ def get_args() -> Namespace:
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     """Runs the web scraper."""
 
     args = get_args()
