@@ -63,8 +63,7 @@ def find_location(name: str, *, district: Optional[str] = None) -> Location:
     return location
 
 
-def parse_pickups(document: BeautifulSoup, *,
-                  pickup_location: Optional[str] = None) -> Iterator[Pickup]:
+def parse_pickups(document: BeautifulSoup) -> Iterator[Pickup]:
     """Parses the pickups."""
 
     if (table := document.find('table')) is None:
@@ -72,8 +71,7 @@ def parse_pickups(document: BeautifulSoup, *,
 
     # Discard spacing and buttons and skip header row.
     for _, caption, dates, _ in frames(table.find_all('tr')[1:], 4):
-        yield Pickup.from_elements(
-            caption, dates, pickup_location=pickup_location)
+        yield Pickup.from_elements(caption, dates)
 
 
 def get_pickup_locations(document: BeautifulSoup) -> Iterator[str]:
@@ -89,17 +87,15 @@ def _get_pickups(request: Request) -> Iterator[Pickup]:
     if (response := post(URL, data=request.to_json())).status_code != 200:
         raise HTTPError.from_response(response)
 
-    document = BeautifulSoup(response.text, 'html5lib')
-
     try:
-        yield from parse_pickups(
-            document, pickup_location=request.pickup_location)
+        return parse_pickups(html := BeautifulSoup(response.text, 'html5lib'))
     except ScrapingError:
-        if not (pickup_locations := list(get_pickup_locations(document))):
+        if not (pickup_locations := list(get_pickup_locations(html))):
             raise
 
-        for pickup_location in pickup_locations:    # pylint: disable=R1704
-            yield from _get_pickups(request.change_location(pickup_location))
+    for pickup_location in pickup_locations:    # pylint: disable=R1704
+        # Return first-best match.
+        return _get_pickups(request.change_location(pickup_location))
 
 
 def get_pickups(location: Location, house_number: Union[HouseNumber, str], *,
@@ -110,5 +106,5 @@ def get_pickups(location: Location, house_number: Union[HouseNumber, str], *,
     if isinstance(house_number, str):
         house_number = HouseNumber.from_string(house_number)
 
-    return _get_pickups(
-        Request(location, house_number, municipality, pickup_location))
+    return _get_pickups(Request(
+        location, house_number, municipality, pickup_location))
