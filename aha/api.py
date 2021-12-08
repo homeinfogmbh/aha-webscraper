@@ -20,7 +20,6 @@ __all__ = ['get_locations', 'find_location', 'get_pickups']
 
 PARAMS = {'von': 'A', 'bis': 'Z'}
 URL = 'https://www.aha-region.de/abholtermine/abfuhrkalender'
-Pickups = Iterator[Pickup]
 
 
 def _get_locations() -> Iterator[Location]:
@@ -64,32 +63,54 @@ def find_location(name: str, *, district: Optional[str] = None) -> Location:
     return location
 
 
+def parse_pickups(document: BeautifulSoup, *,
+                  pickup_location: Optional[str] = None) -> Iterator[Pickup]:
+    """Parses the pickups."""
+
+    if (table := document.find('table')) is None:
+        raise ScrapingError('Could not find table element', document)
+
+    # Discard spacing and buttons and skip header row.
+    for _, caption, dates, _ in frames(table.find_all('tr')[1:], 4):
+        yield Pickup.from_elements(
+            caption, dates, pickup_location=pickup_location)
+
+
+def get_pickup_locations(document: BeautifulSoup) -> Iterator[str]:
+    """Yields available pickup locations."""
+
+    for element in document.find(id='ladeort').find_all('option'):
+        yield element['value']
+
+
+def parse_html(
+        html: str, *, pickup_location: Optional[str] = None
+        ) -> Iterator[Pickup]:
+    """Parses the HTML text."""
+
+    document = BeautifulSoup(html, 'html5lib')
+
+    try:
+        yield from parse_pickups(document, pickup_location=pickup_location)
+    except ScrapingError:
+        if not (pickup_locations := list(get_pickup_locations(document))):
+            raise
+
+    for pickup_location in pickup_locations:    # pylint: disable=R1704
+        yield from parse_pickups(document, pickup_location=pickup_location)
+
+
 def get_pickups(location: Location, house_number: Union[HouseNumber, str], *,
                 municipality: str = 'Hannover',
-                pickup_location: Optional[str] = None) -> Pickups:
+                pickup_location: Optional[str] = None) -> Iterator[Pickup]:
     """Returns pickups for the given location."""
 
     if isinstance(house_number, str):
         house_number = HouseNumber.from_string(house_number)
 
     request = Request(location, house_number, municipality, pickup_location)
-    data = request.to_json()
 
-    if (response := post(URL, data=data)).status_code != 200:
+    if (response := post(URL, data=request.to_json())).status_code != 200:
         raise HTTPError.from_response(response)
 
-    document = BeautifulSoup(response.text, 'html5lib')
-
-    if (table := document.find('table')) is None:
-        if pickup_location is not None:
-            raise ScrapingError('Could not find table element', response.text)
-
-        for element in document.find(id='ladeort').find_all('option'):
-            yield from get_pickups(location, house_number,
-                                   pickup_location=element['value'])
-
-        return
-
-    for _, caption, dates, _ in frames(table.find_all('tr')[1:], 4):
-        yield Pickup.from_elements(caption, dates,
-                                   pickup_location=pickup_location)
+    return parse_html(response.text)

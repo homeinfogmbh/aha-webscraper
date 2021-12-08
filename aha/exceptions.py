@@ -3,6 +3,7 @@
 from __future__ import annotations
 from typing import Iterator
 
+from bs4 import BeautifulSoup
 from requests import Response
 
 from aha.types import Location
@@ -48,7 +49,7 @@ class NoLocationFound(Exception):
 class ScrapingError(Exception):
     """Indicates an error during scraping."""
 
-    def __init__(self, message: str, html: str):
+    def __init__(self, message: str, document: BeautifulSoup):
         super().__init__(message)
         self.message = message
-        self.html = html
+        self.document = document
