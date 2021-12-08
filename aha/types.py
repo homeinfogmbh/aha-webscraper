@@ -43,7 +43,7 @@ class HouseNumber(NamedTuple):
 class Interval(Enum):
     """Pickup interval."""
 
-    FORTNIGHT = '14- täglich'
+    FORTNIGHTLY = '14- täglich'
     WEEKLY = '1x wöchentlich'
 
 
