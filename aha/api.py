@@ -82,7 +82,6 @@ def get_pickups(location: Location, house_number: Union[HouseNumber, str], *,
 
     if (table := document.find('table')) is None:
         if pickup_location is not None:
-            print(response.text)
             raise ScrapingError('Could not find table element', response.text)
 
         for element in document.find(id='ladeort').find_all('option'):
