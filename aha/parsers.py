@@ -19,6 +19,12 @@ STREET_MAP = {
 }
 
 
+def is_text_element(item: Tag) -> bool:
+    """Determines whether the item is plain text."""
+
+    return isinstance(item, NavigableString) and not isinstance(item, Comment)
+
+
 def parse_date(string: str) -> date:
     """Extracts dates from HTML elements."""
 
@@ -41,6 +47,4 @@ def street_regex(street: str) -> Pattern:
 def text_content(element: Tag) -> Iterator[str]:
     """Extracts text content from an HTML element."""
 
-    for item in element.contents:
-        if isinstance(item, NavigableString) and not isinstance(item, Comment):
-            yield item
+    return filter(is_text_element, element.contents)
