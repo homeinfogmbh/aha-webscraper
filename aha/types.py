@@ -79,7 +79,7 @@ class Pickup(NamedTuple):
         image = caption.find('img')['src']
         weekday, dates, interval = schedule.find_all('td')
         weekday = weekday.text
-        dates = [parse_date(date) for date in text_content(dates)]
+        dates = [parse_date(dat) for dat in text_content(dates)]
         interval = Interval(interval.text)
         return cls(type_, image, weekday, dates, interval)
 
@@ -104,8 +104,12 @@ class Request(NamedTuple):
 
     def change_location(self, pickup_location: str) -> Request:
         """Returns a request with changed pickup location."""
-        return type(self)(self.location, self.house_number, self.municipality,
-                          pickup_location)
+        return Request(
+            self.location,
+            self.house_number,
+            self.municipality,
+            pickup_location
+        )
 
     def to_json(self) -> dict:
         """Returns a JSON-ish dict."""
