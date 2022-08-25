@@ -6,7 +6,7 @@ from typing import Any, Iterable, Iterator
 __all__ = ['frames']
 
 
-def frames(iterable: Iterable[Any], size: int) -> Iterator[tuple[Any, Any]]:
+def frames(iterable: Iterable[Any], size: int) -> Iterator[tuple[Any, ...]]:
     """Yields tuples of the given size from the iterable."""
 
     if size < 1:

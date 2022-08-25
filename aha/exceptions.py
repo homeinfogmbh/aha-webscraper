@@ -43,7 +43,7 @@ class HTTPError(Exception):
 
 
 class NoLocationFound(Exception):
-    """Indicats that no matching location was found."""
+    """Indicates that no matching location was found."""
 
 
 class ScrapingError(Exception):

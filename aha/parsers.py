@@ -5,7 +5,7 @@ from functools import cache
 from re import IGNORECASE, Pattern, compile     # pylint: disable=W0622
 from typing import Iterator
 
-from bs4.element import NavigableString, Tag, Comment
+from bs4.element import Comment, NavigableString, PageElement, Tag
 
 
 __all__ = ['parse_date', 'street_regex', 'text_content']
@@ -19,7 +19,7 @@ STREET_MAP = {
 }
 
 
-def is_text_element(item: Tag) -> bool:
+def is_text_element(item: PageElement) -> bool:
     """Determines whether the item is plain text."""
 
     return isinstance(item, NavigableString) and not isinstance(item, Comment)
@@ -47,4 +47,4 @@ def street_regex(street: str) -> Pattern:
 def text_content(element: Tag) -> Iterator[str]:
     """Extracts text content from an HTML element."""
 
-    return filter(is_text_element, element.contents)
+    return map(str, filter(is_text_element, element.contents))

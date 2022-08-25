@@ -31,8 +31,10 @@ def _get_locations() -> Iterator[Location]:
     document = BeautifulSoup(response.text, 'html5lib')
 
     if (select := document.find(id='strasse')) is None:
-        raise ScrapingError('Could not find select element with id "strasse"',
-                            response.text)
+        raise ScrapingError(
+            'Could not find select element with id "strasse"',
+            document
+        )
 
     for option in select.find_all('option'):
         yield Location.from_string(option['value'])
@@ -95,18 +97,23 @@ def _get_pickups(request: Request) -> Iterator[Pickup]:
         try:
             pickup_location, *_ = get_pickup_locations(document)
         except ValueError:
-            raise error     # pylint: disable=W0707
+            raise error
 
         yield from _get_pickups(request.change_location(pickup_location))
 
 
-def get_pickups(location: Location, house_number: Union[HouseNumber, str], *,
-                municipality: str = 'Hannover',
-                pickup_location: Optional[str] = None) -> Iterator[Pickup]:
+def get_pickups(
+        location: Location,
+        house_number: Union[HouseNumber, str],
+        *,
+        municipality: str = 'Hannover',
+        pickup_location: Optional[str] = None
+) -> Iterator[Pickup]:
     """Returns pickups for the given location."""
 
     if isinstance(house_number, str):
         house_number = HouseNumber.from_string(house_number)
 
     return _get_pickups(Request(
-        location, house_number, municipality, pickup_location))
+        location, house_number, municipality, pickup_location
+    ))
