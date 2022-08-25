@@ -40,7 +40,7 @@ class HouseNumber(NamedTuple):
         return cls(int(''.join(number)), ''.join(suffix))
 
 
-class Interval(Enum):
+class Interval(str, Enum):
     """Pickup interval."""
 
     FORTNIGHTLY = '14- täglich'
