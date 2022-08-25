@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 from functools import cache
-from re import IGNORECASE, Pattern, compile     # pylint: disable=W0622
+from re import IGNORECASE, Pattern, compile
 from typing import Iterator
 
 from bs4.element import Comment, NavigableString, PageElement, Tag
