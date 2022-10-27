@@ -2,9 +2,9 @@
 
 from argparse import ArgumentParser, Namespace
 from json import dumps
-from logging import DEBUG, WARNING, basicConfig, getLogger
+from logging import DEBUG, WARNING, basicConfig
 
-from aha.api import find_location, get_pickups
+from aha.api import LOGGER, find_location, get_pickups
 from aha.exceptions import AmbiguousLocations
 from aha.exceptions import HTTPError
 from aha.exceptions import NoLocationFound
@@ -15,7 +15,6 @@ __all__ = ['main']
 
 
 LOG_FORMAT = '[%(levelname)s] %(name)s: %(message)s'
-LOGGER = getLogger('aha-webscraper')
 
 
 def get_args() -> Namespace:

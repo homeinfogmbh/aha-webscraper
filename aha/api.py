@@ -1,7 +1,8 @@
 """Web scraping API."""
 
 from functools import cache
-from typing import Iterator, Optional, Union
+from logging import getLogger
+from typing import Any, Iterable, Iterator, Optional, Union
 
 from bs4 import BeautifulSoup
 from requests import get, post
@@ -10,16 +11,35 @@ from aha.exceptions import AmbiguousLocations
 from aha.exceptions import HTTPError
 from aha.exceptions import NoLocationFound
 from aha.exceptions import ScrapingError
-from aha.functions import frames
 from aha.parsers import street_regex
 from aha.types import HouseNumber, Location, Pickup, Request
 
 
-__all__ = ['get_locations', 'find_location', 'get_pickups']
+__all__ = ['LOGGER', 'get_locations', 'find_location', 'get_pickups']
 
 
+LOGGER = getLogger('aha-webscraper')
 PARAMS = {'von': 'A', 'bis': 'Z'}
 URL = 'https://www.aha-region.de/abholtermine/abfuhrkalender'
+
+
+def frames(iterable: Iterable[Any], size: int) -> Iterator[tuple[Any, ...]]:
+    """Yields tuples of the given size from the iterable."""
+
+    if size < 1:
+        raise ValueError('Size must be >= 1')
+
+    frame = []
+
+    for item in iterable:
+        frame.append(item)
+
+        if len(frame) == size:
+            yield tuple(frame)
+            frame.clear()
+
+    if frame:
+        LOGGER.warning('Last frame not filled: %s', frame)
 
 
 def _get_locations() -> Iterator[Location]:
@@ -72,7 +92,7 @@ def parse_pickups(document: BeautifulSoup) -> Iterator[Pickup]:
         raise ScrapingError('Could not find table element', document)
 
     # Discard spacing and buttons and skip header row.
-    for _, caption, dates, _ in frames(table.find_all('tr')[1:-1], 4):
+    for _, caption, dates, _ in frames(table.find_all('tr')[1:], 4):
         yield Pickup.from_elements(caption, dates)
 
 
