@@ -95,7 +95,7 @@ class Pickup(NamedTuple):
             'type': self.type,
             'image': self.image,
             'weekday': self.weekday,
-            'dates': [d.isoformat() for d in self.dates],
+            'dates': [dat.isoformat() for dat in self.dates],
             'interval': self.interval.name
         }
 
