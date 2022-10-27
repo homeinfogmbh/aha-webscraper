@@ -29,7 +29,8 @@ def parse_date(string: str) -> date:
     """Extracts dates from HTML elements."""
 
     _, date_string = string.split(',')  # discard weekday
-    return datetime.strptime(date_string.strip(), '%d.%m.%Y').date()
+    date_string = date_string.replace('*', '').strip()
+    return datetime.strptime(date_string, '%d.%m.%Y').date()
 
 
 @cache
