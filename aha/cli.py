@@ -62,7 +62,7 @@ def main() -> int:
         return 3
     except ScrapingError as error:
         LOGGER.error('Scraping error: %s', error.message)
-        LOGGER.debug('HTML text:\n%s', error.html)
+        LOGGER.debug('HTML text:\n%s', error.document)
         return 4
 
     print(dumps([p.to_json() for p in pickups], indent=args.indent))
