@@ -72,7 +72,7 @@ def parse_pickups(document: BeautifulSoup) -> Iterator[Pickup]:
         raise ScrapingError('Could not find table element', document)
 
     # Discard spacing and buttons and skip header row.
-    for _, caption, dates, _ in frames(table.find_all('tr')[1:], 4):
+    for _, caption, dates, _ in frames(table.find_all('tr')[1:-1], 4):
         yield Pickup.from_elements(caption, dates)
 
 
