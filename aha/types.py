@@ -22,7 +22,12 @@ class HouseNumber(NamedTuple):
 
     @classmethod
     def from_string(cls, string: str) -> HouseNumber:
-        """Splits the house number."""
+        """Create house number from a string."""
+        return cls(*cls.split_number_and_suffix(string))
+
+    @staticmethod
+    def split_number_and_suffix(string: str) -> tuple[int, str]:
+        """Split off house number and suffix."""
         number: list[str] = []
         suffix: list[str] = []
         index = 0
@@ -37,7 +42,7 @@ class HouseNumber(NamedTuple):
             if char in ascii_letters:
                 suffix.append(char)
 
-        return cls(int(''.join(number)), ''.join(suffix))
+        return int(''.join(number)), ''.join(suffix)
 
 
 class Interval(str, Enum):
