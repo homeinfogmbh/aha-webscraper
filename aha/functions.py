@@ -22,4 +22,4 @@ def frames(iterable: Iterable[Any], size: int) -> Iterator[tuple[Any, ...]]:
             frame.clear()
 
     if frame:
-        raise ValueError('Last frame not filled')
+        raise ValueError('Last frame not filled:', frame)
