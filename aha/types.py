@@ -75,13 +75,14 @@ class Pickup(NamedTuple):
     @classmethod
     def from_elements(cls, caption: Tag, schedule: Tag) -> Pickup:
         """Creates a pickup from an element pair."""
-        type_ = caption.find('strong').text
-        image = caption.find('img')['src']
         weekday, dates, interval = schedule.find_all('td')
-        weekday = weekday.text
-        dates = [parse_date(dat) for dat in text_content(dates)]
-        interval = Interval(interval.text)
-        return cls(type_, image, weekday, dates, interval)
+        return cls(
+            caption.find('strong').text,
+            caption.find('img')['src'],
+            weekday.text,
+            [parse_date(dat) for dat in text_content(dates)],
+            Interval(interval.text)
+        )
 
     def to_json(self) -> dict:
         """Returns a JSON-ish dict."""
