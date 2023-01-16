@@ -73,7 +73,7 @@ def find_location(name: str, *, district: Optional[str] = None) -> Location:
     try:
         location, *superfluous = sorted(
             location for location in get_locations()
-            if street_regex(name).fullmatch(location.name)
+            if street_regex(name).match(location.name)
             and (district is None or location.district == district)
         )
     except ValueError:
