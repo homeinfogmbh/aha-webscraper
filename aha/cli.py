@@ -67,3 +67,7 @@ def main() -> int:
 
     print(dumps([p.to_json() for p in pickups], indent=args.indent))
     return 0
+
+
+if __name__ == '__main__':
+    main()
