@@ -5,9 +5,9 @@ from aha.exceptions import AmbiguousLocations
 from aha.exceptions import HTTPError
 from aha.exceptions import NoLocationFound
 from aha.exceptions import ScrapingError
-from aha.functions import get_cached_pickups
+from aha.functions import by_address
 from aha.types import HouseNumber, Interval, Location, Pickup
-from aha.wsgi import APPLICATION, garbage_pickup
+from aha.wsgi import APPLICATION
 
 
 __all__ = [
@@ -16,9 +16,8 @@ __all__ = [
     'HTTPError',
     'NoLocationFound',
     'ScrapingError',
+    'by_address',
     'find_location',
-    'garbage_pickup',
-    'get_cached_pickups',
     'get_locations',
     'get_pickups',
     'HouseNumber',

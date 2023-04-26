@@ -1,20 +1,49 @@
 """Common functions."""
 
 from datetime import date
+from typing import Union
 
 from flask import request
 
 from hwdb import Deployment
 from mdb import Address
+from wsgilib import JSON, JSONMessage
 
-from aha.api import get_pickups
 from aha.types import Location, Pickup
+from aha.api import find_location, get_pickups
+from aha.exceptions import AmbiguousLocations
+from aha.exceptions import HTTPError
+from aha.exceptions import NoLocationFound
+from aha.exceptions import ScrapingError
 
 
-__all__ = ['get_address', 'get_cached_pickups']
+__all__ = ['by_address', 'get_address', 'get_cached_pickups']
 
 
 CACHE = {}
+
+
+def by_address(address: Address) -> Union[JSON, JSONMessage]:
+    """Return a WSGI response by address."""
+
+    try:
+        location = find_location(address.street)
+    except NoLocationFound:
+        return JSONMessage('No matching locations found.')
+    except AmbiguousLocations as locations:
+        return JSONMessage(
+            'Multiple matching locations found.',
+            locations=[location.name for location in locations]
+        )
+
+    try:
+        pickups = get_cached_pickups(location, address.house_number)
+    except HTTPError as error:
+        return JSONMessage('HTTP error.', status_code=error.status_code)
+    except ScrapingError as error:
+        return JSONMessage('Scraping error.', error=error.message)
+
+    return JSON([pickup.to_json() for pickup in pickups])
 
 
 def get_address() -> Address:
