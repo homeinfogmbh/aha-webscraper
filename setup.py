@@ -9,7 +9,14 @@ setup(
         "local_scheme": "node-and-timestamp"
     },
     setup_requires=['setuptools_scm'],
-    install_requires=['beautifulsoup4', 'requests'],
+    install_requires=[
+        'beautifulsoup4',
+        'flask',
+        'hwdb',
+        'mdb',
+        'requests',
+        'wsgilib'
+    ],
     author='HOMEINFO - Digitale Informationssysteme GmbH',
     author_email='<info at homeinfo dot de>',
     maintainer='Richard Neumann',
