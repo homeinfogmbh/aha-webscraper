@@ -14,7 +14,7 @@ from aha.exceptions import ScrapingError
 from aha.functions import get_address, get_cached_pickups
 
 
-__all__ = ['APPLICATION']
+__all__ = ['APPLICATION', 'garbage_pickup']
 
 
 APPLICATION = Application('lpt', cors=True)
