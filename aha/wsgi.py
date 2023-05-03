@@ -12,7 +12,7 @@ from aha.functions import by_address, get_address
 __all__ = ['APPLICATION']
 
 
-APPLICATION = Application('lpt', cors=True)
+APPLICATION = Application('aha', cors=True)
 
 
 @APPLICATION.route('/', methods=['POST'], strict_slashes=False)
