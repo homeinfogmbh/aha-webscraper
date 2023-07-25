@@ -11,14 +11,14 @@ from bs4.element import Tag
 from aha.parsers import parse_date, text_content
 
 
-__all__ = ['HouseNumber', 'Interval', 'Location', 'Pickup', 'Request']
+__all__ = ["HouseNumber", "Interval", "Location", "Pickup", "Request"]
 
 
 class HouseNumber(NamedTuple):
     """Represents a house number."""
 
     number: int
-    suffix: str = ''
+    suffix: str = ""
 
     @classmethod
     def from_string(cls, string: str) -> HouseNumber:
@@ -42,14 +42,14 @@ class HouseNumber(NamedTuple):
             if char in ascii_letters:
                 suffix.append(char)
 
-        return int(''.join(number)), ''.join(suffix)
+        return int("".join(number)), "".join(suffix)
 
 
 class Interval(str, Enum):
     """Pickup interval."""
 
-    FORTNIGHTLY = '14- täglich'
-    WEEKLY = '1x wöchentlich'
+    FORTNIGHTLY = "14- täglich"
+    WEEKLY = "1x wöchentlich"
 
 
 class Location(NamedTuple):
@@ -60,12 +60,12 @@ class Location(NamedTuple):
     district: str
 
     def __str__(self):
-        return '@'.join(self)
+        return "@".join(self)
 
     @classmethod
     def from_string(cls, string: str) -> Location:
         """Parses the location parameters from a string."""
-        return cls(*string.split('@'))
+        return cls(*string.split("@"))
 
 
 class Pickup(NamedTuple):
@@ -80,23 +80,23 @@ class Pickup(NamedTuple):
     @classmethod
     def from_elements(cls, caption: Tag, schedule: Tag) -> Pickup:
         """Creates a pickup from an element pair."""
-        weekday, dates, interval = schedule.find_all('td')
+        weekday, dates, interval = schedule.find_all("td")
         return cls(
-            caption.find('strong').text,
-            caption.find('img')['src'],
+            caption.find("strong").text,
+            caption.find("img")["src"],
             weekday.text,
             [parse_date(dat) for dat in text_content(dates)],
-            Interval(interval.text)
+            Interval(interval.text),
         )
 
     def to_json(self) -> dict:
         """Returns a JSON-ish dict."""
         return {
-            'type': self.type,
-            'image': self.image,
-            'weekday': self.weekday,
-            'dates': [dat.isoformat() for dat in self.dates],
-            'interval': self.interval.name
+            "type": self.type,
+            "image": self.image,
+            "weekday": self.weekday,
+            "dates": [dat.isoformat() for dat in self.dates],
+            "interval": self.interval.name,
         }
 
 
@@ -111,19 +111,16 @@ class Request(NamedTuple):
     def change_location(self, pickup_location: str) -> Request:
         """Returns a request with changed pickup location."""
         return Request(
-            self.location,
-            self.house_number,
-            self.municipality,
-            pickup_location
+            self.location, self.house_number, self.municipality, pickup_location
         )
 
     def to_json(self) -> dict:
         """Returns a JSON-ish dict."""
         return {
-            'gemeinde': self.municipality,
-            'strasse': str(self.location),
-            'hausnr': str(self.house_number.number),
-            'hausnraddon': self.house_number.suffix,
-            'ladeort': self.pickup_location,
-            'anzeigen': 'Suchen'
+            "gemeinde": self.municipality,
+            "strasse": str(self.location),
+            "hausnr": str(self.house_number.number),
+            "hausnraddon": self.house_number.suffix,
+            "ladeort": self.pickup_location,
+            "anzeigen": "Suchen",
         }

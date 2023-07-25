@@ -11,17 +11,17 @@ from aha.wsgi import APPLICATION
 
 
 __all__ = [
-    'APPLICATION',
-    'AmbiguousLocations',
-    'HTTPError',
-    'NoLocationFound',
-    'ScrapingError',
-    'by_address',
-    'find_location',
-    'get_locations',
-    'get_pickups',
-    'HouseNumber',
-    'Interval',
-    'Location',
-    'Pickup'
+    "APPLICATION",
+    "AmbiguousLocations",
+    "HTTPError",
+    "NoLocationFound",
+    "ScrapingError",
+    "by_address",
+    "find_location",
+    "get_locations",
+    "get_pickups",
+    "HouseNumber",
+    "Interval",
+    "Location",
+    "Pickup",
 ]

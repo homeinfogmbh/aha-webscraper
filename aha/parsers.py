@@ -8,15 +8,10 @@ from typing import Iterator
 from bs4.element import Comment, NavigableString, PageElement, Tag
 
 
-__all__ = ['parse_date', 'street_regex', 'text_content']
+__all__ = ["parse_date", "street_regex", "text_content"]
 
 
-STREET_MAP = {
-    'strasse': 'str.',
-    'straße': 'str',
-    'Strasse': 'Str.',
-    'Straße': 'Str.'
-}
+STREET_MAP = {"strasse": "str.", "straße": "str", "Strasse": "Str.", "Straße": "Str."}
 
 
 def is_text_element(item: PageElement) -> bool:
@@ -28,9 +23,9 @@ def is_text_element(item: PageElement) -> bool:
 def parse_date(string: str) -> date:
     """Extracts dates from HTML elements."""
 
-    _, date_string = string.split(',')  # discard weekday
-    date_string = date_string.replace('*', '').strip()
-    return datetime.strptime(date_string, '%d.%m.%Y').date()
+    _, date_string = string.split(",")  # discard weekday
+    date_string = date_string.replace("*", "").strip()
+    return datetime.strptime(date_string, "%d.%m.%Y").date()
 
 
 @cache
@@ -42,7 +37,7 @@ def street_regex(street: str) -> Pattern:
             street = street.replace(key, value)
             break
 
-    return compile(street.replace('.', '.*'), flags=IGNORECASE)
+    return compile(street.replace(".", ".*"), flags=IGNORECASE)
 
 
 def text_content(element: Tag) -> Iterator[str]:

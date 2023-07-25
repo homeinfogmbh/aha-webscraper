@@ -9,13 +9,13 @@ from wsgilib import Application, JSON, JSONMessage
 from aha.functions import by_address, get_address
 
 
-__all__ = ['APPLICATION']
+__all__ = ["APPLICATION"]
 
 
-APPLICATION = Application('aha', cors=True)
+APPLICATION = Application("aha", cors=True)
 
 
-@APPLICATION.route('/', methods=['POST'], strict_slashes=False)
+@APPLICATION.route("/", methods=["POST"], strict_slashes=False)
 def garbage_pickup() -> Union[JSON, JSONMessage]:
     """Returns information about the garbage collection."""
 

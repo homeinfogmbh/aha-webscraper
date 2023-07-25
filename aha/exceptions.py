@@ -9,12 +9,7 @@ from requests import Response
 from aha.types import Location
 
 
-__all__ = [
-    'AmbiguousLocations',
-    'HTTPError',
-    'NoLocationFound',
-    'ScrapingError'
-]
+__all__ = ["AmbiguousLocations", "HTTPError", "NoLocationFound", "ScrapingError"]
 
 
 class AmbiguousLocations(Exception):
