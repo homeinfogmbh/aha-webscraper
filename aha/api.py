@@ -42,9 +42,9 @@ def frames(iterable: Iterable[Any], size: int) -> Iterator[tuple[Any, ...]]:
         LOGGER.warning("Last frame not filled: %s", frame)
 
 
-def _get_locations() -> Iterator[Location]:
+def _get_locations(municipality) -> Iterator[Location]:
     """Yields locations."""
-
+    PARAMS['gemeinde'] = municipality
     if (response := get(URL, params=PARAMS)).status_code != 200:
         raise HTTPError.from_response(response)
 
@@ -58,19 +58,19 @@ def _get_locations() -> Iterator[Location]:
 
 
 @cache
-def get_locations() -> frozenset[Location]:
+def get_locations(municipality) -> frozenset[Location]:
     """Returns a set of locations."""
 
-    return frozenset(_get_locations())
+    return frozenset(_get_locations(municipality))
 
 
-def find_location(name: str, *, district: Optional[str] = None) -> Location:
+def find_location(name: str, *, district: Optional[str] = None,  municipality: Optional[str] = 'Hannover') -> Location:
     """Yields locations."""
 
     try:
         location, *superfluous = sorted(
             location
-            for location in get_locations()
+            for location in get_locations(municipality=municipality)
             if street_regex(name).match(location.name)
             and (district is None or location.district == district)
         )
@@ -124,7 +124,7 @@ def get_pickups(
     location: Location,
     house_number: Union[HouseNumber, str],
     *,
-    municipality: str = "Hannover",
+    municipality:Optional[str]= "Hannover",
     pickup_location: Optional[str] = None,
 ) -> Iterator[Pickup]:
     """Returns pickups for the given location."""

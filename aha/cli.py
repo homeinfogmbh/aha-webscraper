@@ -39,7 +39,7 @@ def main() -> int:
     basicConfig(format=LOG_FORMAT, level=DEBUG if args.verbose else WARNING)
 
     try:
-        location = find_location(args.street, district=args.district)
+        location = find_location(args.street, district=args.district, municipality=args.municipality)
     except NoLocationFound:
         LOGGER.error("No matching locations found.")
         return 1
@@ -52,7 +52,7 @@ def main() -> int:
         return 2
 
     try:
-        pickups = get_pickups(location, args.houseno)
+        pickups = get_pickups(location, args.houseno,municipality=args.municipality)
     except HTTPError as error:
         LOGGER.error("HTTP error: %s (%i)", error.text, error.status_code)
         return 3

@@ -1,7 +1,7 @@
 """Common functions."""
 
 from datetime import date
-from typing import Union
+from typing import Union,Optional
 
 from flask import request
 
@@ -27,7 +27,7 @@ def by_address(address: Address) -> Union[JSON, JSONMessage]:
     """Return a WSGI response by address."""
 
     try:
-        location = find_location(address.street)
+        location = find_location(address.street, municipality=address.city)
     except NoLocationFound:
         return JSONMessage("No matching locations found.")
     except AmbiguousLocations as locations:
@@ -37,7 +37,7 @@ def by_address(address: Address) -> Union[JSON, JSONMessage]:
         )
 
     try:
-        pickups = get_cached_pickups(location, address.house_number)
+        pickups = get_cached_pickups(location, address.house_number, municipality=address.city)
     except HTTPError as error:
         return JSONMessage("HTTP error.", status_code=error.status_code)
     except ScrapingError as error:
@@ -67,7 +67,7 @@ def get_address() -> Address:
     )
 
 
-def get_cached_pickups(location: Location, house_number: str) -> list[Pickup]:
+def get_cached_pickups(location: Location, house_number: str,municipality:Optional[str]= 'Hannover') -> list[Pickup]:
     """Returns cached pickups for the day."""
 
     try:
@@ -79,5 +79,5 @@ def get_cached_pickups(location: Location, house_number: str) -> list[Pickup]:
     try:
         return locations[location]
     except KeyError:
-        locations[location] = pickups = list(get_pickups(location, house_number))
+        locations[location] = pickups = list(get_pickups(location, house_number,municipality=municipality))
         return pickups
