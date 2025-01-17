@@ -50,6 +50,7 @@ class Interval(str, Enum):
 
     FORTNIGHTLY = "14- täglich"
     WEEKLY = "1x wöchentlich"
+    TWO_WEEKS = "2x wöchentlich"
 
 
 class Location(NamedTuple):
