@@ -56,7 +56,7 @@ def get_address() -> Address:
         deployment = (
             Deployment.select(cascade=True).where(Deployment.id == deployment_id).get()
         )
-        return deployment.lpt_address or deployment.address
+        return deployment.address
 
     return Address(
         street=request.json["street"],
