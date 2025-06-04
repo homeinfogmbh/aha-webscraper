@@ -42,9 +42,11 @@ def frames(iterable: Iterable[Any], size: int) -> Iterator[tuple[Any, ...]]:
         LOGGER.warning("Last frame not filled: %s", frame)
 
 
-def _get_locations(municipality) -> Iterator[Location]:
+def _get_locations(name,municipality) -> Iterator[Location]:
     """Yields locations."""
     PARAMS['gemeinde'] = municipality
+    PARAMS['von'] = name[0].upper()
+
     if (response := get(URL, params=PARAMS)).status_code != 200:
         raise HTTPError.from_response(response)
 
@@ -58,10 +60,10 @@ def _get_locations(municipality) -> Iterator[Location]:
 
 
 @cache
-def get_locations(municipality) -> frozenset[Location]:
+def get_locations(name,municipality) -> frozenset[Location]:
     """Returns a set of locations."""
 
-    return frozenset(_get_locations(municipality))
+    return frozenset(_get_locations(name,municipality))
 
 
 def find_location(name: str, *, district: Optional[str] = None,  municipality: Optional[str] = 'Hannover') -> Location:
@@ -70,7 +72,7 @@ def find_location(name: str, *, district: Optional[str] = None,  municipality: O
     try:
         location, *superfluous = sorted(
             location
-            for location in get_locations(municipality=municipality)
+            for location in get_locations(name,municipality=municipality)
             if street_regex(name).match(location.name)
             and (district is None or location.district == district)
         )
