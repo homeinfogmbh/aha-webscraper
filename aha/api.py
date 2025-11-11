@@ -105,21 +105,26 @@ def get_pickup_locations(document: BeautifulSoup) -> Iterator[str]:
 
 def _get_pickups(request: Request) -> Iterator[Pickup]:
     """Yields pickups for the given request."""
-
     if (response := post(URL, data=request.to_json())).status_code != 200:
         raise HTTPError.from_response(response)
-
     document = BeautifulSoup(response.text, "html5lib")
-
     try:
         yield from parse_pickups(document)
+
     except ScrapingError as error:
         try:
-            pickup_location, *_ = get_pickup_locations(document)
+            pickup_locations = get_pickup_locations(document)
         except ValueError:
             raise error
-
-        yield from _get_pickups(request.change_location(pickup_location))
+        pickups = []
+        returnpickups = []
+        for pickup_location in pickup_locations:
+            b = _get_pickups(request.change_location(pickup_location))
+            returnpickups.append(b)
+        for p in returnpickups:
+            for x in p:
+                pickups.append(x)
+                yield x
 
 
 def get_pickups(
